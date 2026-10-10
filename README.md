@@ -2,7 +2,7 @@
 
 Selene will remind members of **Selene - Atreides** with the **guild leader** role to vote on Landsraad decrees in **Dune: Awakening**.
 
-The bot provides `/ping` and an administrator setup check, `/reminder-check`. Reminder scheduling and persistent reminder state will be added incrementally.
+The bot provides `/ping`, an administrator setup check (`/reminder-check`), and manual reminder delivery (`/reminder-send`). Automatic weekly reminders use Europe/Paris time and persistent delivery claims to prevent repeats after restarts.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Register slash commands once before trying `/ping`, and repeat when command defi
 npm run deploy
 ```
 
-This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/ping` and `/reminder-check`. Registration is separate from bot startup.
+This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/ping`, `/reminder-check`, and `/reminder-send`. Registration is separate from bot startup.
 
 After starting the bot, look for `Logged in as ...`, then invoke `/ping` in the configured server. The expected response is `Pong!`. Stop with Ctrl+C; SIGINT and SIGTERM close the Discord client.
 
@@ -78,4 +78,40 @@ Run `npm run deploy` to register the new command, then restart development mode 
 
 The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
 
-Reminder configuration is validated when this command runs, so `/ping` remains available while setup is incomplete. The reusable target resolver lives in `src/reminders/target.ts`; future reminder delivery will use it too.
+With scheduling disabled, reminder configuration is validated when this command runs, so `/ping` remains available while setup is incomplete. Enabling scheduling makes reminder configuration required at startup. The reusable target resolver lives in `src/reminders/target.ts` and is also used by manual and scheduled delivery.
+
+## Send a manual reminder
+
+Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with **Manage Server**, run `/reminder-send` in the configured server.
+
+This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and mentions only `GUILD_LEADER_ROLE_ID`. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
+
+The message currently says: “Please remember to vote on the Landsraad decrees in Dune: Awakening.” It does not claim a deadline or track whether anyone has voted. Completion tracking is not implemented; scheduled reminders are sent once per weekly slot.
+
+`src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
+
+## Automatic weekly reminders
+
+The agreed schedule uses **Europe/Paris**, including daylight saving changes:
+
+| Day | Local time | Message |
+| --- | --- | --- |
+| Friday | 20:00 | Begin discussion or review prior decisions to prepare for voting |
+| Sunday | 21:00 | Announce that in-game Landsraad voting is open |
+| Monday | 20:00 | Final reminder before voting closes Tuesday at 06:00 |
+
+These messages follow the configured timetable; the bot does not query the game to confirm that polls opened or to retrieve previous discussions.
+
+```dotenv
+REMINDERS_ENABLED=true
+FRIDAY_REMINDER_TIME=20:00
+MONDAY_REMINDER_TIME=20:00
+```
+
+The example environment file leaves automatic sending disabled for new installations. In this project's local `.env`, the agreed schedule has been enabled. Rebuild and restart the bot to load changes, or restart `npm run dev` after editing `.env`. `/reminder-check` displays the configured schedule. No new command registration is needed for scheduling if the current commands are already registered.
+
+The bot must remain running on a machine with network access. Scheduling runs inside this bot, checks every 30 seconds, and waits for a ready Discord connection. A restart can catch up for up to one hour after the scheduled time; older reminders are skipped. This does not create an operating-system service or keep a sleeping computer awake.
+
+Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Check the channel before using `/reminder-send` as a manual fallback. Removing claims can cause duplicate notifications.
+
+The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transition Sundays, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.

@@ -1,5 +1,5 @@
 import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
-import { loadReminderConfig } from '../config.js';
+import { loadReminderConfig, loadScheduleConfig } from '../config.js';
 import { resolveReminderTarget } from '../reminders/target.js';
 
 export const reminderCheck = {
@@ -20,8 +20,12 @@ export const reminderCheck = {
                 return;
             }
             const { role, channel } = await resolveReminderTarget(interaction.client, config);
+            const schedule = loadScheduleConfig();
+            const scheduleStatus = schedule
+                ? `Weekly schedule (Europe/Paris): Friday ${schedule.fridayTime}, Sunday 21:00, Monday ${schedule.mondayTime}. Voting closes Tuesday 06:00. The bot must remain running.`
+                : 'Automatic reminders are disabled.';
             await interaction.editReply({
-                content: `Reminder target is ready.\nRole: <@&${role.id}>\nChannel: <#${channel.id}>\nNo reminder was sent. Scheduling is not enabled yet.`,
+                content: `Reminder target is ready.\nRole: <@&${role.id}>\nChannel: <#${channel.id}>\n${scheduleStatus}\nNo reminder was sent by this check.`,
                 allowedMentions: { parse: [] },
             });
         } catch (error) {
