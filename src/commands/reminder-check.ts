@@ -1,3 +1,4 @@
+/** Private setup diagnostics; invoked only after the central admin-role check. */
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadReminderConfig, loadScheduleConfig } from '../config.js';
 import { resolveReminderTarget } from '../reminders/target.js';

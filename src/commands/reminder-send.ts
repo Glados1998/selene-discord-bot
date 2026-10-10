@@ -1,3 +1,4 @@
+/** Manual delivery after central authorization; the guild lock only prevents concurrent sends. */
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadReminderConfig } from '../config.js';
 import { sendReminder } from '../reminders/send.js';

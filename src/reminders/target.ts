@@ -1,3 +1,4 @@
+/** Resolve within the configured guild and check effective channel permissions before delivery. */
 import { ChannelType, PermissionFlagsBits, type Client } from 'discord.js';
 import type { loadReminderConfig } from '../config.js';
 

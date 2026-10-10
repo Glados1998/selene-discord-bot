@@ -1,3 +1,4 @@
+/** Builds the Discord client. Every registered command passes the same authorization gate. */
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { commands } from './commands/index.js';
 import { authorizeCommand, type CommandAccessConfig } from './auth/commands.js';

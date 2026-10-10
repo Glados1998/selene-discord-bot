@@ -1,3 +1,4 @@
+/** Wall-clock scheduling uses Paris time, independent of the host timezone and UTC offset. */
 export const REMINDER_TIME_ZONE = 'Europe/Paris';
 export type ScheduledReminderKind = 'preparation' | 'voting-open' | 'final';
 export interface ScheduleConfig {

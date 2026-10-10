@@ -1,3 +1,4 @@
+/** Pure environment parsers: validate before connecting; errors name keys, never values. */
 type Environment = Record<string, string | undefined>;
 
 function required(env: Environment, name: string): string {

@@ -2,7 +2,7 @@
 
 Selene will remind members of **Selene - Atreides** with the **guild leader** role to vote on Landsraad decrees in **Dune: Awakening**.
 
-The bot provides `/ping`, an administrator setup check (`/reminder-check`), and manual reminder delivery (`/reminder-send`). Automatic weekly reminders use Europe/Paris time and persistent delivery claims to prevent repeats after restarts.
+The bot provides `/status`, an administrator setup check (`/reminder-check`), and manual reminder delivery (`/reminder-send`). Automatic weekly reminders use Europe/Paris time and persistent delivery claims to prevent repeats after restarts.
 
 ## Requirements
 
@@ -10,7 +10,7 @@ The bot provides `/ping`, an administrator setup check (`/reminder-check`), and 
 - A Discord application with a bot installed in your server, authorized with the `bot` and `applications.commands` scopes.
 - Access to a server channel where you can invoke the bot's commands.
 
-The bot currently requests only the Guilds intent; no privileged intents are needed for `/ping`.
+The bot currently requests only the Guilds intent; no privileged intents are needed for `/status`.
 
 ## Setup
 
@@ -43,15 +43,15 @@ npm start
 
 For development, use `npm run dev` to restart automatically when source files change. `npm start` uses compiled files in `dist`, so rebuild after source changes.
 
-Register slash commands once before trying `/ping`, and repeat when command definitions change:
+Register slash commands once before trying `/status`, and repeat when command definitions change:
 
 ```sh
 npm run deploy
 ```
 
-This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/ping`, `/reminder-check`, and `/reminder-send`. Registration is separate from bot startup.
+This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/status`, `/reminder-check`, and `/reminder-send`. Registration is separate from bot startup.
 
-After starting the bot, look for `Logged in as ...`, then invoke `/ping` in the configured server. The expected response is `Pong!`. Stop with Ctrl+C; SIGINT and SIGTERM close the Discord client.
+After starting the bot, look for `Logged in as ...`, then invoke `/status` in the configured server. The private response reports connection readiness, uptime, latency, configured schedule, reminder permissions, and storage writability. It does not send a reminder or prove message delivery. Stop with Ctrl+C; SIGINT and SIGTERM close the Discord client.
 
 ## Code layout
 
@@ -79,7 +79,7 @@ Run `npm run deploy` to register the new command, then restart development mode 
 
 The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
 
-With scheduling disabled, reminder configuration is validated when this command runs, so `/ping` remains available while setup is incomplete. Enabling scheduling makes reminder configuration required at startup. The reusable target resolver lives in `src/reminders/target.ts` and is also used by manual and scheduled delivery.
+With scheduling disabled, reminder configuration is validated when this command runs, so `/status` remains available while setup is incomplete. Enabling scheduling makes reminder configuration required at startup. The reusable target resolver lives in `src/reminders/target.ts` and is also used by manual and scheduled delivery.
 
 ## Send a manual reminder
 
@@ -119,8 +119,10 @@ The modules are deliberately separate: `schedule.ts` determines what is due, `sc
 
 ## Production and command permissions
 
-Every command, including `/ping`, requires membership in the exact role identified by `ADMIN_ROLE_ID` in `GUILD_ID`. Discord Administrator permission alone is not sufficient. Set this required variable before restarting the updated bot; there is no fallback to a role name or a broader permission.
+Every command, including `/status`, requires membership in the exact role identified by `ADMIN_ROLE_ID` in `GUILD_ID`. Discord Administrator permission alone is not sufficient. Set this required variable before restarting the updated bot; there is no fallback to a role name or a broader permission.
 
 Run `npm run deploy` after this permissions change. In Discord's server integration settings, allow the admin role to use the commands. Discord's defaults restrict visibility, and the bot enforces role membership again when a command is invoked.
 
 See [the production deployment guide](docs/production.md) for installation into Selene - Atreides, hosting configuration, persistent storage, and rollout verification.
+
+After replacing `/ping` with `/status`, deploy the updated application and run command registration again. Check the admin role’s integration permissions for the new command.

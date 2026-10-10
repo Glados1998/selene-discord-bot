@@ -3,6 +3,7 @@ import { spawnSync } from 'node:child_process';
 import { setImmediate } from 'node:timers/promises';
 import { test } from 'node:test';
 import { Events, type Interaction } from 'discord.js';
+import { commands } from '../src/commands/index.js';
 import { createBot } from '../src/bot.js';
 import { loadBotConfig, loadDeploymentConfig } from '../src/config.js';
 
@@ -24,13 +25,14 @@ test('configuration rejects missing values and malformed Discord IDs', () => {
     assert.deepEqual(loadBotConfig({ DISCORD_TOKEN: ' test-token ' }), { token: 'test-token' });
 });
 
-test('ping replies, ignores unrelated interactions, and survives a rejected reply', async context => {
+test('command dispatch replies, ignores unrelated interactions, and survives a rejected reply', async context => {
     const client = createBot({ guildId: environment.GUILD_ID, adminRoleId: environment.ADMIN_ROLE_ID });
     const errors = context.mock.method(console, 'error', () => {});
     const replies: string[] = [];
+    context.mock.method(commands[0]!, 'execute', async interaction => { await interaction.reply('Test response'); });
     const interaction = {
         isChatInputCommand: () => true,
-        commandName: 'ping',
+        commandName: 'status',
         inGuild: () => true,
         guildId: environment.GUILD_ID,
         member: { roles: [environment.ADMIN_ROLE_ID] },
@@ -41,7 +43,7 @@ test('ping replies, ignores unrelated interactions, and survives a rejected repl
         client.emit(Events.InteractionCreate, { ...interaction, commandName: 'unknown' } as unknown as Interaction);
         client.emit(Events.InteractionCreate, { ...interaction, isChatInputCommand: () => false } as unknown as Interaction);
         await setImmediate();
-        assert.deepEqual(replies, ['Pong!']);
+        assert.deepEqual(replies, ['Test response']);
         client.emit(Events.InteractionCreate, {
             ...interaction,
             reply: async () => { throw new Error('Simulated reply failure'); },

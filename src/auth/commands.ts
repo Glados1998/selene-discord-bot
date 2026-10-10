@@ -1,3 +1,4 @@
+/** Discord command visibility is not authorization: enforce server and exact role at runtime. */
 import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
 import type { loadCommandAccessConfig } from '../config.js';
 

@@ -1,3 +1,4 @@
+/** Explicit registration only: replaces this application’s guild commands; never starts the bot. */
 import 'dotenv/config';
 import { REST, Routes } from 'discord.js';
 import { commands } from './commands/index.js';

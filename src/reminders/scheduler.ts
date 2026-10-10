@@ -1,3 +1,4 @@
+/** Serial polling with durable claims. Failed or uncertain sends are deliberately not retried. */
 import { dueReminders, type ScheduleConfig, type ScheduledReminderKind } from './schedule.js';
 
 interface SchedulerOptions {
@@ -31,6 +32,7 @@ export function createScheduler(options: SchedulerOptions) {
         }
     }
 
+    // Share the in-flight promise so slow REST requests cannot overlap the next poll.
     function tick(): Promise<void> {
         if (stopped) return Promise.resolve();
         if (running) return running;

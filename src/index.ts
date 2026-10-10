@@ -1,3 +1,4 @@
+/** Process entry point: validate configuration, connect, start scheduling, and drain on shutdown. */
 import 'dotenv/config';
 import { createBot } from './bot.js';
 import { loadBotConfig, loadScheduleConfig, loadCommandAccessConfig } from './config.js';

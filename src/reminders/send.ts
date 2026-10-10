@@ -1,3 +1,4 @@
+/** Shared manual/scheduled delivery. Text is conditional because game outcomes are not queried. */
 import type { Client } from 'discord.js';
 import { resolveReminderTarget, type ReminderConfig } from './target.js';
 import type { ScheduledReminderKind } from './schedule.js';
@@ -12,6 +13,7 @@ const messages = {
 export function buildReminderMessage(roleId: string, kind: ScheduledReminderKind | 'manual' = 'manual') {
     return {
         content: `<@&${roleId}> ${messages[kind]}`,
+        // Explicit allowlist prevents @everyone, user, or unrelated role notifications.
         allowedMentions: { parse: [] as [], roles: [roleId], users: [], repliedUser: false },
     };
 }

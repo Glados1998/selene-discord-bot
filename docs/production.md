@@ -9,8 +9,8 @@ Production will run on Railway. The supplied Selene - Atreides IDs are saved in 
 3. Give the bot View Channel and Send Messages in the reminder channel, plus Mention Everyone there if the target role is not mentionable. The bot itself does not require Administrator permission.
 4. Register the commands using the production environment (see commands below).
 5. In Discord's Server Settings → Integrations → this application, explicitly allow the specific admin role to use the bot's commands. Check for per-command overrides. Commands are disabled for ordinary members by default; Discord administrators can see/use commands at the platform level, but the bot independently denies anyone without `ADMIN_ROLE_ID`, including administrators and the server owner.
-6. Restart the bot after setting `ADMIN_ROLE_ID`. All commands, including `/ping`, are protected by one shared runtime check. A missing role ID prevents startup.
-7. Verify `/ping` and `/reminder-check` with an admin-role member. Verify a non-member cannot execute commands. `/reminder-send` triggers an actual role notification, so use it only when ready for that notification.
+6. Restart the bot after setting `ADMIN_ROLE_ID`. All commands, including `/status`, are protected by one shared runtime check. A missing role ID prevents startup.
+7. Verify `/status` and `/reminder-check` with an admin-role member. Verify a non-member cannot execute commands. `/reminder-send` triggers an actual role notification, so use it only when ready for that notification.
 
 Discord permission behavior: https://docs.discord.com/developers/interactions/application-commands#permissions
 
