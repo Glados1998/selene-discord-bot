@@ -1,22 +1,29 @@
 import 'dotenv/config';
-import {
-    Client,
-    Events,
-    GatewayIntentBits
-} from "discord.js";
+import { createBot } from './bot.js';
+import { loadBotConfig } from './config.js';
 
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+async function main(): Promise<void> {
+    const config = loadBotConfig();
+    const client = createBot();
 
-client.once(Events.ClientReady, () => {
-    console.log(`Logged in as ${client.user.tag}`);
-});
-
-client.on(Events.InteractionCreate, async (interaction) => {
-    if (!interaction.isChatInputCommand()) return;
-
-    if (interaction.commandName === 'ping') {
-        await interaction.reply('Pong!');
+    for (const signal of ['SIGINT', 'SIGTERM'] as const) {
+        process.once(signal, () => {
+            void client.destroy().catch(error => {
+                console.error('Failed to shut down the bot:', error);
+                process.exitCode = 1;
+            });
+        });
     }
-});
 
-client.login(process.env.DISCORD_TOKEN);
+    try {
+        await client.login(config.token);
+    } catch (error) {
+        await client.destroy();
+        throw error;
+    }
+}
+
+main().catch(error => {
+    console.error('Bot startup failed:', error);
+    process.exitCode = 1;
+});

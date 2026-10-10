@@ -1,24 +1,20 @@
 import 'dotenv/config';
-import { REST, Routes, SlashCommandBuilder } from 'discord.js';
+import { REST, Routes } from 'discord.js';
+import { commands } from './commands/index.js';
+import { loadDeploymentConfig } from './config.js';
 
-const commands = [
-    new SlashCommandBuilder()
-        .setName('ping')
-        .setDescription('Check if the bot is responding'),
-].map(command => command.toJSON());
+async function deploy(): Promise<void> {
+    const config = loadDeploymentConfig();
+    const rest = new REST({ version: '10' }).setToken(config.token);
 
-const rest = new REST({ version: '10' })
-    .setToken(process.env.DISCORD_TOKEN!);
-
-async function deploy() {
     await rest.put(
-        Routes.applicationGuildCommands(
-            process.env.CLIENT_ID!,
-            process.env.GUILD_ID!
-        ),
-        { body: commands }
+        Routes.applicationGuildCommands(config.clientId, config.guildId),
+        { body: commands.map(command => command.data.toJSON()) },
     );
     console.log('Successfully registered application commands.');
 }
 
-deploy().catch(console.error);
+deploy().catch(error => {
+    console.error('Command registration failed:', error);
+    process.exitCode = 1;
+});
