@@ -1,7 +1,8 @@
 import { Client, Events, GatewayIntentBits } from 'discord.js';
 import { commands } from './commands/index.js';
+import { authorizeCommand, type CommandAccessConfig } from './auth/commands.js';
 
-export function createBot(): Client {
+export function createBot(access: CommandAccessConfig): Client {
     const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
     client.once(Events.ClientReady, readyClient => {
@@ -18,6 +19,7 @@ export function createBot(): Client {
         if (!command) return;
 
         try {
+            if (!await authorizeCommand(interaction, access)) return;
             await command.execute(interaction);
         } catch (error) {
             console.error(`Command /${interaction.commandName} failed:`, error);

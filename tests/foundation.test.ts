@@ -10,10 +10,11 @@ const environment = {
     DISCORD_TOKEN: 'test-token',
     CLIENT_ID: '123456789012345678',
     GUILD_ID: '234567890123456789',
+    ADMIN_ROLE_ID: '345678901234567890',
 };
 
 test('configuration rejects missing values and malformed Discord IDs', () => {
-    for (const name of Object.keys(environment)) {
+    for (const name of ['DISCORD_TOKEN', 'CLIENT_ID', 'GUILD_ID']) {
         assert.throws(() => loadDeploymentConfig({ ...environment, [name]: ' ' }), new RegExp(name));
     }
     for (const name of ['CLIENT_ID', 'GUILD_ID']) {
@@ -24,12 +25,15 @@ test('configuration rejects missing values and malformed Discord IDs', () => {
 });
 
 test('ping replies, ignores unrelated interactions, and survives a rejected reply', async context => {
-    const client = createBot();
+    const client = createBot({ guildId: environment.GUILD_ID, adminRoleId: environment.ADMIN_ROLE_ID });
     const errors = context.mock.method(console, 'error', () => {});
     const replies: string[] = [];
     const interaction = {
         isChatInputCommand: () => true,
         commandName: 'ping',
+        inGuild: () => true,
+        guildId: environment.GUILD_ID,
+        member: { roles: [environment.ADMIN_ROLE_ID] },
         reply: async (text: string) => { replies.push(text); },
     };
     try {

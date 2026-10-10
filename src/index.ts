@@ -1,6 +1,6 @@
 import 'dotenv/config';
 import { createBot } from './bot.js';
-import { loadBotConfig, loadScheduleConfig } from './config.js';
+import { loadBotConfig, loadScheduleConfig, loadCommandAccessConfig } from './config.js';
 import { Events } from 'discord.js';
 import { DeliveryStore } from './reminders/delivery-store.js';
 import { createScheduler } from './reminders/scheduler.js';
@@ -9,7 +9,7 @@ import { sendReminder } from './reminders/send.js';
 async function main(): Promise<void> {
     const config = loadBotConfig();
     const schedule = loadScheduleConfig();
-    const client = createBot();
+    const client = createBot(loadCommandAccessConfig());
     const store = new DeliveryStore('data/reminder-deliveries');
     const scheduler = schedule ? createScheduler({
         schedule,

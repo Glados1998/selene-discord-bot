@@ -1,4 +1,4 @@
-import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadReminderConfig, loadScheduleConfig } from '../config.js';
 import { resolveReminderTarget } from '../reminders/target.js';
 
@@ -6,12 +6,8 @@ export const reminderCheck = {
     data: new SlashCommandBuilder()
         .setName('reminder-check')
         .setDescription('Check the configured Landsraad reminder role and channel')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(0),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-        if (!interaction.inGuild() || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-            await interaction.reply({ content: 'You need Manage Server permission to check reminder settings.', flags: MessageFlags.Ephemeral });
-            return;
-        }
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
         try {
             const config = loadReminderConfig();

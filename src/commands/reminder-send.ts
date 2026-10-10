@@ -1,4 +1,4 @@
-import { MessageFlags, PermissionFlagsBits, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadReminderConfig } from '../config.js';
 import { sendReminder } from '../reminders/send.js';
 
@@ -9,14 +9,10 @@ export const reminderSend = {
     data: new SlashCommandBuilder()
         .setName('reminder-send')
         .setDescription('Send a Landsraad voting reminder and notify the guild leader role')
-        .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+        .setDefaultMemberPermissions(0),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
-        if (!interaction.inGuild() || !interaction.memberPermissions?.has(PermissionFlagsBits.ManageGuild)) {
-            await interaction.reply({ content: 'You need Manage Server permission to send reminders.', flags: MessageFlags.Ephemeral });
-            return;
-        }
         await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-        const guildId = interaction.guildId;
+        const guildId = interaction.guildId!;
         if (activeGuilds.has(guildId)) {
             await interaction.editReply('A reminder is already being sent.');
             return;

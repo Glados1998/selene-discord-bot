@@ -3,7 +3,8 @@ import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.j
 export const ping = {
     data: new SlashCommandBuilder()
         .setName('ping')
-        .setDescription('Check if the bot is responding'),
+        .setDescription('Check if the bot is responding')
+        .setDefaultMemberPermissions(0),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.reply('Pong!');
     },

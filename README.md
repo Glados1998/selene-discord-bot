@@ -25,7 +25,8 @@ If `.env` already exists, edit it instead of copying over it. Fill in:
 | --- | --- | --- |
 | `DISCORD_TOKEN` | Bot token from the Discord Developer Portal | Bot and command registration |
 | `CLIENT_ID` | Application ID from the Developer Portal | Command registration |
-| `GUILD_ID` | Selene - Atreides server ID (Copy Server ID with Discord Developer Mode enabled) | Command registration |
+| `GUILD_ID` | Selene - Atreides server ID (Copy Server ID with Discord Developer Mode enabled) | Bot and command registration |
+| `ADMIN_ROLE_ID` | Exact admin role ID from the configured server | Access to every bot command |
 
 Keep the token private. `.env` and local environment variants are ignored by Git. Configuration errors identify the variable without printing its value.
 
@@ -74,7 +75,7 @@ REMINDER_CHANNEL_ID=your_channel_id
 
 With Discord Developer Mode enabled, copy the ID of the **guild leader** role and the ID of the text channel intended for reminders. IDs keep the configuration stable when names change. `GUILD_ID` must identify Selene - Atreides.
 
-Run `npm run deploy` to register the new command, then restart development mode or run `npm run build` and `npm start`. Run `/reminder-check` as a member with **Manage Server** permission in the configured server.
+Run `npm run deploy` to register the new command, then restart development mode or run `npm run build` and `npm start`. Run `/reminder-check` as a member with the configured **admin role** in the configured server.
 
 The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
 
@@ -82,7 +83,7 @@ With scheduling disabled, reminder configuration is validated when this command 
 
 ## Send a manual reminder
 
-Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with **Manage Server**, run `/reminder-send` in the configured server.
+Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with the configured **admin role**, run `/reminder-send` in the configured server.
 
 This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and mentions only `GUILD_LEADER_ROLE_ID`. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
 
@@ -115,3 +116,11 @@ The bot must remain running on a machine with network access. Scheduling runs in
 Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Check the channel before using `/reminder-send` as a manual fallback. Removing claims can cause duplicate notifications.
 
 The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transition Sundays, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
+
+## Production and command permissions
+
+Every command, including `/ping`, requires membership in the exact role identified by `ADMIN_ROLE_ID` in `GUILD_ID`. Discord Administrator permission alone is not sufficient. Set this required variable before restarting the updated bot; there is no fallback to a role name or a broader permission.
+
+Run `npm run deploy` after this permissions change. In Discord's server integration settings, allow the admin role to use the commands. Discord's defaults restrict visibility, and the bot enforces role membership again when a command is invoked.
+
+See [the production deployment guide](docs/production.md) for installation into Selene - Atreides, hosting configuration, persistent storage, and rollout verification.

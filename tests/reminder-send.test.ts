@@ -1,8 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ChannelType, PermissionsBitField, PermissionFlagsBits, MessageFlags, type Client, type ChatInputCommandInteraction } from 'discord.js';
+import { ChannelType, PermissionsBitField, PermissionFlagsBits, type Client } from 'discord.js';
 import { buildReminderMessage, sendReminder } from '../src/reminders/send.js';
-import { reminderSend } from '../src/commands/reminder-send.js';
 
 const config = { guildId: '123456789012345678', roleId: '234567890123456789', channelId: '345678901234567890' };
 
@@ -34,17 +33,4 @@ test('delivery sends once to the resolved channel and allows only the configured
     channel.permissionsFor = () => new PermissionsBitField();
     await assert.rejects(sendReminder(client, config), /View Channel/);
     assert.equal(payloads.length, 1);
-});
-
-test('manual reminder rejects DMs and members without Manage Server before delivery', async () => {
-    for (const inGuild of [false, true]) {
-        const replies: unknown[] = [];
-        const interaction = {
-            inGuild: () => inGuild,
-            memberPermissions: new PermissionsBitField(),
-            reply: async (payload: unknown) => { replies.push(payload); },
-        } as unknown as ChatInputCommandInteraction;
-        await reminderSend.execute(interaction);
-        assert.deepEqual(replies, [{ content: 'You need Manage Server permission to send reminders.', flags: MessageFlags.Ephemeral }]);
-    }
 });

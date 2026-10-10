@@ -54,3 +54,10 @@ export function loadScheduleConfig(env: Environment = process.env) {
         mondayTime: eveningTime(env, 'MONDAY_REMINDER_TIME'),
     };
 }
+
+export function loadCommandAccessConfig(env: Environment = process.env) {
+    const guildId = snowflake(env, 'GUILD_ID');
+    const adminRoleId = snowflake(env, 'ADMIN_ROLE_ID');
+    if (adminRoleId === guildId) throw new Error('ADMIN_ROLE_ID must not be the @everyone role.');
+    return { guildId, adminRoleId };
+}
