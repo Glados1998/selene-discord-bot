@@ -86,7 +86,7 @@ Register the updated command list with `npm run deploy`, then restart the bot (r
 
 This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and mentions only `GUILD_LEADER_ROLE_ID`. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
 
-The message currently says: “Please remember to vote on the Landsraad decrees in Dune: Awakening.” It does not claim a deadline or track whether anyone has voted. Completion tracking is not implemented; scheduled reminders are sent once per weekly slot.
+The manual message asks members to check this cycle’s Landsraad outcome and vote according to the guild discussion if voting is available to us. It does not track whether anyone has voted. Completion tracking is not implemented; scheduled reminders are sent once per weekly slot.
 
 `src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
 
@@ -97,10 +97,10 @@ The agreed schedule uses **Europe/Paris**, including daylight saving changes:
 | Day | Local time | Message |
 | --- | --- | --- |
 | Friday | 20:00 | Begin discussion or review prior decisions to prepare for voting |
-| Sunday | 21:00 | Announce that in-game Landsraad voting is open |
+| Sunday | 21:00 | Announce the scheduled voting window and ask members to check the outcome |
 | Monday | 20:00 | Final reminder before voting closes Tuesday at 06:00 |
 
-These messages follow the configured timetable; the bot does not query the game to confirm that polls opened or to retrieve previous discussions.
+These reminders repeat every week and follow the configured timetable. Wording is conditional: Atreides may lose to the Harkonnen, so members are asked to check the outcome and vote only if voting is available to us. The bot does not query the game to determine the winner, confirm that polls opened, or retrieve previous discussions.
 
 ```dotenv
 REMINDERS_ENABLED=true
