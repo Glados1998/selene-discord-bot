@@ -25,3 +25,11 @@ export function loadDeploymentConfig(env: Environment = process.env) {
         guildId: snowflake(env, 'GUILD_ID'),
     };
 }
+
+export function loadReminderConfig(env: Environment = process.env) {
+    return {
+        guildId: snowflake(env, 'GUILD_ID'),
+        roleId: snowflake(env, 'GUILD_LEADER_ROLE_ID'),
+        channelId: snowflake(env, 'REMINDER_CHANNEL_ID'),
+    };
+}

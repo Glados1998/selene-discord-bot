@@ -2,7 +2,7 @@
 
 Selene will remind members of **Selene - Atreides** with the **guild leader** role to vote on Landsraad decrees in **Dune: Awakening**.
 
-This first step provides a validated startup flow and a `/ping` command. Role targeting, reminder scheduling, and persistent reminder state will be added incrementally.
+The bot provides `/ping` and an administrator setup check, `/reminder-check`. Reminder scheduling and persistent reminder state will be added incrementally.
 
 ## Requirements
 
@@ -48,7 +48,7 @@ Register slash commands once before trying `/ping`, and repeat when command defi
 npm run deploy
 ```
 
-This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains only `/ping`. Registration is separate from bot startup.
+This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/ping` and `/reminder-check`. Registration is separate from bot startup.
 
 After starting the bot, look for `Logged in as ...`, then invoke `/ping` in the configured server. The expected response is `Pong!`. Stop with Ctrl+C; SIGINT and SIGTERM close the Discord client.
 
@@ -62,3 +62,20 @@ After starting the bot, look for `Logged in as ...`, then invoke `/ping` in the 
 - `tests/`: local configuration, interaction, and failure-path checks with no Discord traffic.
 
 Startup and registration failures return a nonzero exit code. Command failures are logged without terminating the bot; a failed Discord reply may leave the user without a response.
+
+## Check the reminder target
+
+Add these values to your existing `.env` (leave the token and existing IDs intact):
+
+```dotenv
+GUILD_LEADER_ROLE_ID=your_role_id
+REMINDER_CHANNEL_ID=your_channel_id
+```
+
+With Discord Developer Mode enabled, copy the ID of the **guild leader** role and the ID of the text channel intended for reminders. IDs keep the configuration stable when names change. `GUILD_ID` must identify Selene - Atreides.
+
+Run `npm run deploy` to register the new command, then restart development mode or run `npm run build` and `npm start`. Run `/reminder-check` as a member with **Manage Server** permission in the configured server.
+
+The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
+
+Reminder configuration is validated when this command runs, so `/ping` remains available while setup is incomplete. The reusable target resolver lives in `src/reminders/target.ts`; future reminder delivery will use it too.
