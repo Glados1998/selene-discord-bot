@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadScheduleConfig } from '../config.js';
 import { REMINDER_TIME_ZONE, type ScheduleConfig } from '../reminders/schedule.js';
 
@@ -27,6 +27,7 @@ export const schedule = {
         .setDescription('Show the weekly voting window and reminder schedule'),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.reply({
+            flags: MessageFlags.Ephemeral,
             content: buildScheduleMessage(loadScheduleConfig()),
             allowedMentions: { parse: [] },
         });

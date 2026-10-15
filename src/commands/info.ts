@@ -1,4 +1,4 @@
-import { SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
+import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 
 export const info = {
     data: new SlashCommandBuilder()
@@ -6,6 +6,7 @@ export const info = {
         .setDescription('Learn about the Landsraad Herald and its public commands'),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
         await interaction.reply({
+            flags: MessageFlags.Ephemeral,
             content: [
                 '**Landsraad Herald**',
                 'The Herald helps Selene - Atreides coordinate Landsraad decree voting in Dune: Awakening. It reminds guild leaders to prepare, discuss preferred decrees, and vote during the weekly voting window.',

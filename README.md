@@ -119,7 +119,7 @@ The modules are deliberately separate: `schedule.ts` determines what is due, `sc
 
 ## Production and command permissions
 
-The public `/schedule` and `/info` commands are available to all members of `GUILD_ID` and reply visibly in the channel without pinging anyone. `/schedule` shows the voting window and configured reminder times, or indicates that automatic reminders are disabled. `/info` explains the Herald and lists the public commands. Both commands reject DMs and other servers.
+The public `/schedule` and `/info` commands are available to all members of `GUILD_ID` without pinging anyone. Both reply privately, visible only to the person who invoked the command. `/schedule` shows the voting window and configured reminder times, or indicates that automatic reminders are disabled. `/info` explains the Herald and lists the public commands. Both commands reject DMs and other servers.
 
 The administrator commands `/status`, `/reminder-check`, and `/reminder-send` require membership in the exact role identified by `ADMIN_ROLE_ID` in `GUILD_ID`. Discord Administrator permission alone is not sufficient. Set this required variable before restarting the updated bot; there is no fallback to a role name or a broader permission.
 
