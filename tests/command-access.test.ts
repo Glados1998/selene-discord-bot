@@ -52,9 +52,7 @@ test('denies DMs, other servers, absent members, and administrators without the 
     }
 });
 
-test('every command is disabled by default and protected at dispatch, including status', async context => {
-test('admin commands are disabled by default and protected at dispatch, including ping', async context => {
-test('admin commands are disabled by default and protected at dispatch, including ping', async context => {
+test('admin commands are disabled by default and protected at dispatch, including status', async context => {
     const client = createBot(access);
     try {
         for (const command of commands.filter(command => command.access === 'admin')) {

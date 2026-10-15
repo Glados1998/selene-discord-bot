@@ -9,7 +9,3 @@ export const commands = [
     ...[status, reminderCheck, reminderSend].map(command => ({ ...command, access: 'admin' as const })),
     ...[schedule, info].map(command => ({ ...command, access: 'public' as const })),
 ];
-export const commands = [
-    ...[ping, reminderCheck, reminderSend].map(command => ({ ...command, access: 'admin' as const })),
-    ...[schedule, info].map(command => ({ ...command, access: 'public' as const })),
-];
