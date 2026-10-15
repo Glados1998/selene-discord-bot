@@ -53,9 +53,11 @@ test('denies DMs, other servers, absent members, and administrators without the 
 });
 
 test('every command is disabled by default and protected at dispatch, including status', async context => {
+test('admin commands are disabled by default and protected at dispatch, including ping', async context => {
+test('admin commands are disabled by default and protected at dispatch, including ping', async context => {
     const client = createBot(access);
     try {
-        for (const command of commands) {
+        for (const command of commands.filter(command => command.access === 'admin')) {
             assert.equal(command.data.toJSON().default_member_permissions, '0');
             const execute = context.mock.method(command, 'execute', async () => {});
             const { value } = interaction({ member: { roles: [] }, isChatInputCommand: () => true, commandName: command.data.name });
@@ -66,6 +68,26 @@ test('every command is disabled by default and protected at dispatch, including 
             client.emit(Events.InteractionCreate, authorized.value as Interaction);
             await setImmediate();
             assert.equal(execute.mock.callCount(), 1);
+        }
+    } finally {
+        await client.destroy();
+    }
+});
+
+
+test('public commands allow ordinary members but reject DMs and other servers at dispatch', async context => {
+    const client = createBot(access);
+    try {
+        for (const name of ['schedule', 'info']) {
+            const command = commands.find(command => command.data.name === name)!;
+            assert.equal(command.data.toJSON().default_member_permissions, undefined);
+            const execute = context.mock.method(command, 'execute', async () => {});
+            for (const overrides of [{}, { inGuild: () => false }, { guildId: '345678901234567890' }]) {
+                const { value } = interaction({ member: { roles: [] }, isChatInputCommand: () => true, commandName: name, ...overrides });
+                client.emit(Events.InteractionCreate, value as Interaction);
+                await setImmediate();
+                assert.equal(execute.mock.callCount(), 1);
+            }
         }
     } finally {
         await client.destroy();

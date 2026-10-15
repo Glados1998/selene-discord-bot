@@ -20,7 +20,7 @@ export function createBot(access: CommandAccessConfig): Client {
         if (!command) return;
 
         try {
-            if (!await authorizeCommand(interaction, access)) return;
+            if (!await authorizeCommand(interaction, access, command.access)) return;
             await command.execute(interaction);
         } catch (error) {
             console.error(`Command /${interaction.commandName} failed:`, error);
