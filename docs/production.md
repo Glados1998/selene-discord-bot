@@ -57,7 +57,7 @@ For a host without containers, use Node.js 22.18 or later, run `npm ci`, `npm te
 
 ## Verification and updates
 
-- Confirm the startup log shows the bot identity and Friday 20:00, Sunday 21:00, Monday 20:00, Europe/Amsterdam (or the configured preparation/final reminder times).
+- Confirm the startup log shows the bot identity and Friday 20:00, Sunday 21:00, Monday 20:00, Europe/Paris.
 - Check the correct guild leader role and reminder channel with `/reminder-check`.
 - Confirm the first automatic reminder at its scheduled time.
 - Retain the persistent volume when updating; do not run `docker compose down -v` unless intentionally deleting delivery history.

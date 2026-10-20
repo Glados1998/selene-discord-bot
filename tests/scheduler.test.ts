@@ -28,7 +28,7 @@ test('schedule validates enabled settings and can be disabled without reminder c
     assert.throws(() => loadScheduleConfig({ REMINDERS_ENABLED: 'yes' }), /REMINDERS_ENABLED/);
 });
 
-test('all three slots follow Amsterdam winter and summer time, including weeks after DST transitions', () => {
+test('all three slots follow Paris winter and summer time, including DST transition Sundays', () => {
     for (const [date, kind] of [
         ['2026-10-09T18:00:00Z', 'preparation'],
         ['2026-10-11T19:00:00Z', 'voting-open'],
@@ -118,15 +118,9 @@ test('scheduled messages describe each phase and only allow the intended role me
         const message = buildReminderMessage(env.GUILD_LEADER_ROLE_ID, kind);
         assert.deepEqual(message.allowedMentions.roles, [env.GUILD_LEADER_ROLE_ID]);
         assert.deepEqual(message.allowedMentions.parse, []);
-        assert.match(message.content, /<t:\d+:F> \(<t:\d+:R>\)/);
+        assert.match(message.content, /Europe\/Paris/);
     }
     assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'preparation').content, /discussing/);
     assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'voting-open').content, /now open/);
-    assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'final').content, /Voting closes: <t:/);
-});
-
-
-test('final reminder defaults to Monday evening and never runs on Tuesday', () => {
-    assert.equal(loadScheduleConfig({ ...env, MONDAY_REMINDER_TIME: undefined, TUESDAY_REMINDER_TIME: '19:00' })?.mondayTime, '20:00');
-    assert.deepEqual(dueReminders(new Date('2026-10-20T17:00:00Z'), schedule), []);
+    assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'final').content, /Tuesday.*06:00/);
 });

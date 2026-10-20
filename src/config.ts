@@ -43,10 +43,6 @@ function eveningTime(env: Environment, name: string): string {
     return value;
 }
 
-function finalReminderTime(env: Environment): string {
-    return eveningTime({ ...env, MONDAY_REMINDER_TIME: env.MONDAY_REMINDER_TIME ?? '20:00' }, 'MONDAY_REMINDER_TIME');
-}
-
 export function loadScheduleConfig(env: Environment = process.env) {
     const enabled = env.REMINDERS_ENABLED?.trim() || 'false';
     if (enabled !== 'true' && enabled !== 'false') {
@@ -56,7 +52,7 @@ export function loadScheduleConfig(env: Environment = process.env) {
     return {
         ...loadReminderConfig(env),
         fridayTime: eveningTime(env, 'FRIDAY_REMINDER_TIME'),
-        mondayTime: finalReminderTime(env),
+        mondayTime: eveningTime(env, 'MONDAY_REMINDER_TIME'),
     };
 }
 
