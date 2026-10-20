@@ -148,3 +148,8 @@ At the next voting opening, status resets for the new cycle and previously track
 Queued personal reminders survive restarts and have a one-hour catch-up window after their due time, bounded by voting close. Each recipient is claimed before Discord is contacted; blocked, failed, or uncertain sends are logged without automatic retries or channel fallback. If Discord accepts a DM but the process crashes before its ID is saved, that message cannot be automatically cleaned up. If a crash occurs between community delivery and saving the personal job, personal delivery for that slot may be missed. These choices avoid duplicate notifications.
 
 Register the two new commands with `npm run deploy`, then rebuild and restart/deploy the bot. Registration and production deployment are separate steps. No DM is sent just by enabling preferences.
+
+
+### Test a personal DM
+
+In a channel of the configured test server, run `/reminder-test` as a guild leader. It sends a clearly labelled preview only to you, even outside voting hours or with reminders disabled. The ✅ and ⏹️ buttons simulate acknowledgements without changing real votes, preferences, or delivery claims. Allow DMs from the server. Delete the preview DM when finished; previews are not included in automatic cycle cleanup. Register the updated commands with `npm run deploy` using the test `.env`, then run `npm run dev`.

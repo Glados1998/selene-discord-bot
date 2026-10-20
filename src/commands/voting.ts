@@ -39,13 +39,48 @@ export const reminderPreference = {
         await interaction.editReply({ content: `Your personal voting DMs are **${status.enabled ? 'enabled' : 'disabled'}**. Use /reminder enabled:true or enabled:false to change this.\nWhen enabled, reminders arrive about 10 minutes after the opening and closing-soon community announcements. Marking ✅ stops them for this cycle; ⏹️ snoozes until the next reminder. Allow DMs from this server to receive them.${loadScheduleConfig() ? '' : '\nAutomatic reminders are currently disabled for this server.'}`, allowedMentions: { parse: [] } });
     },
 };
+/** A preview never reads or writes real preferences, votes, or delivery claims. */
+export function testReminderMessage(id: string, voted = false) {
+    const window = currentVote(new Date());
+    const payload = voteMessage(id, window.cycle, voted, window.closes);
+    payload.content = '**TEST ONLY — personal reminder preview**\n' + payload.content
+        + '\nThese buttons simulate a response without changing your real voting status or reminder preferences. Delete this preview DM when finished.';
+    for (const row of payload.components) {
+        for (const button of row.components) {
+            const data = button.toJSON();
+            if ('custom_id' in data) button.setCustomId(data.custom_id.replace('vote:', 'vote:test:'));
+        }
+    }
+    return payload;
+}
+export const reminderTest = {
+    data: new SlashCommandBuilder().setName('reminder-test').setDescription('Send yourself a test voting DM without changing real voting status'),
+    async execute(interaction: ChatInputCommandInteraction) {
+        if (!await begin(interaction)) return;
+        let message;
+        try {
+            message = await interaction.user.send(testReminderMessage(interaction.user.id));
+        } catch {
+            await interaction.editReply('Could not confirm delivery of your test DM. Check your inbox before retrying, and make sure you allow DMs from this server.');
+            return;
+        }
+        await interaction.editReply({ content: `Test DM sent: ${message.url}\nTry ✅ or ⏹️ in the DM. Your real voting status and preferences will not change.`, allowedMentions: { parse: [] } });
+    },
+};
 export async function handleVoteButton(interaction: ButtonInteraction) {
-    const match = /^vote:(\d+):(\d+):(done|snooze)$/.exec(interaction.customId);
+    const match = /^vote:(test:)?(\d+):(\d+):(done|snooze)$/.exec(interaction.customId);
     if (!match) return;
     if (!await begin(interaction)) return;
-    const [, owner, cycle, action] = match;
+    const [, preview, owner, cycle, action] = match;
     if (owner !== interaction.user.id) {
         await interaction.editReply('These voting controls belong to another guild leader.');
+        return;
+    }
+    if (preview) {
+        await interaction.message.edit(testReminderMessage(owner!, action === 'done')).catch(() => {});
+        await interaction.editReply({ content: action === 'done'
+            ? '✅ TEST: Thank you and your guild for your support! No real vote was recorded.'
+            : '⏹️ TEST: Snoozed until the next reminder. Your real reminder preferences and voting status are unchanged.', allowedMentions: { parse: [] } });
         return;
     }
     const now = new Date();

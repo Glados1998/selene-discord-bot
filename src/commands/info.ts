@@ -16,6 +16,7 @@ export const info = {
                 '• `/info` — learn what the Herald does and which public commands you can use.',
                 '',
                 '**Guild leader commands**',
+                '• `/reminder-test` — send yourself a test DM with simulated voting buttons.',
                 '• `/voting-status` — view your self-reported vote and private controls during voting.',
                 '• `/reminder` — enable or disable personal reminder DMs (enabled by default for guild leaders).',
                 '',

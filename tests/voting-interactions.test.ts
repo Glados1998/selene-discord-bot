@@ -63,3 +63,39 @@ test('closed voting status provides no controls', async context => {
     await votingStatus.execute(f.interaction as unknown as ChatInputCommandInteraction);
     assert.match(String(f.replies[0]), /currently closed/);
 });
+
+test('test reminder sends only to invoking leader and never touches voting state', async context => {
+    setup(context);
+    const { reminderTest, testReminderMessage } = await import('../src/commands/voting.js');
+    const status = context.mock.method(voting, 'status');
+    const act = context.mock.method(voting, 'act');
+    const preference = context.mock.method(voting, 'preference');
+    const sent: unknown[] = [];
+    const f = fixture(true, { user: { id: userId, send: async (payload: unknown) => { sent.push(payload); return { url: 'test-dm' }; } } });
+    await reminderTest.execute(f.interaction as unknown as ChatInputCommandInteraction);
+    assert.equal(sent.length, 1);
+    assert.match((sent[0] as { content: string }).content, /TEST ONLY/);
+    for (const action of ['done', 'snooze']) {
+        const button = fixture(true, { guildId: null, customId: `vote:test:${userId}:123:${action}`, message: { edit: async () => {} } });
+        await handleVoteButton(button.interaction as unknown as ButtonInteraction);
+        assert.match(JSON.stringify(button.replies), /TEST:/);
+    }
+    assert.equal(status.mock.callCount(), 0);
+    assert.equal(act.mock.callCount(), 0);
+    assert.equal(preference.mock.callCount(), 0);
+    assert.match(JSON.stringify(testReminderMessage(userId).components), /vote:test:/);
+});
+
+test('test reminder denies non-leaders and handles blocked DMs privately', async context => {
+    setup(context);
+    const { reminderTest } = await import('../src/commands/voting.js');
+    let attempts = 0;
+    const user = { id: userId, send: async () => { attempts++; throw new Error('blocked'); } };
+    const denied = fixture(false, { user });
+    await reminderTest.execute(denied.interaction as unknown as ChatInputCommandInteraction);
+    assert.equal(attempts, 0);
+    const blocked = fixture(true, { user });
+    await reminderTest.execute(blocked.interaction as unknown as ChatInputCommandInteraction);
+    assert.equal(attempts, 1);
+    assert.match(String(blocked.replies[0]), /allow DMs/);
+});
