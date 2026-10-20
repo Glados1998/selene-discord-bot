@@ -2,7 +2,7 @@
 
 Selene will remind members of **Selene - Atreides** with the **guild leader** role to vote on Landsraad decrees in **Dune: Awakening**.
 
-The bot provides public `/schedule` and `/info` commands, an administrator-only `/status`, an administrator setup check (`/reminder-check`), and manual reminder delivery (`/reminder-send`). Automatic weekly reminders use Europe/Paris time and persistent delivery claims to prevent repeats after restarts.
+The bot provides public `/schedule` and `/info` commands, an administrator-only `/status`, an administrator setup check (`/reminder-check`), and manual reminder delivery (`/reminder-send`). Automatic weekly reminders use Europe/Amsterdam time and persistent delivery claims to prevent repeats after restarts.
 
 ## Requirements
 
@@ -93,13 +93,17 @@ The manual message asks members to check this cycle’s Landsraad outcome and vo
 
 ## Automatic weekly reminders
 
-The agreed schedule uses **Europe/Paris**, including daylight saving changes:
+The agreed schedule uses **Europe/Amsterdam**, including daylight saving changes:
 
 | Day | Local time | Message |
 | --- | --- | --- |
 | Friday | 20:00 | Begin discussion or review prior decisions to prepare for voting |
 | Sunday | 21:00 | Announce the scheduled voting window and ask members to check the outcome |
 | Monday | 20:00 | Final reminder before voting closes Tuesday at 06:00 |
+
+Voting runs from Sunday 21:00 to Tuesday 06:00 in Europe/Amsterdam, following daylight saving changes. `/schedule` and reminder messages use Discord timestamps so each reader sees their local date/time and a relative countdown. `/schedule` shows the current window until closing, then the next window; preparation shows its next occurrence.
+
+`MONDAY_REMINDER_TIME` defaults to `20:00` and accepts times from `18:00` through `22:59`. The previously introduced `TUESDAY_REMINDER_TIME` is ignored. Update hosting variables when deploying.
 
 These reminders repeat every week and follow the configured timetable. Wording is conditional: Atreides may lose to the Harkonnen, so members are asked to check the outcome and vote only if voting is available to us. The bot does not query the game to determine the winner, confirm that polls opened, or retrieve previous discussions.
 
@@ -115,7 +119,7 @@ The bot must remain running on a machine with network access. Scheduling runs in
 
 Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Check the channel before using `/reminder-send` as a manual fallback. Removing claims can cause duplicate notifications.
 
-The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transition Sundays, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
+The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transitions, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
 
 ## Production and command permissions
 

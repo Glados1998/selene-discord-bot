@@ -1,20 +1,21 @@
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadScheduleConfig } from '../config.js';
-import { REMINDER_TIME_ZONE, type ScheduleConfig } from '../reminders/schedule.js';
+import { displayTime, votingWindow, nextPreparation, finalReminder, type ScheduleConfig } from '../reminders/schedule.js';
 
-export function buildScheduleMessage(schedule: ScheduleConfig | undefined): string {
+export function buildScheduleMessage(schedule: ScheduleConfig | undefined, now: Date = new Date()): string {
+    const window = votingWindow(now);
     return [
         '**Landsraad voting schedule**',
-        `All times are in **${REMINDER_TIME_ZONE}** (including daylight saving changes).`,
+        'Times are shown in your timezone.',
         '',
-        '**Voting opens:** Sunday at 21:00',
-        '**Voting closes:** Tuesday at 06:00',
+        `**Voting opens:** ${displayTime(window.opens)}`,
+        `**Voting closes:** ${displayTime(window.closes)}`,
         '',
         ...(schedule ? [
-            '**Weekly reminders**',
-            `• Friday at ${schedule.fridayTime} — prepare and discuss our preferred decrees.`,
-            '• Sunday at 21:00 — voting window reminder.',
-            `• Monday at ${schedule.mondayTime} — final reminder before voting closes.`,
+            '**Reminders**',
+            `• Next preparation: ${displayTime(nextPreparation(now, schedule.fridayTime))} — discuss our preferred decrees.`,
+            `• Voting window reminder: ${displayTime(window.opens)}.`,
+            `• Final reminder: ${displayTime(finalReminder(now, schedule.mondayTime))}.`,
         ] : ['Automatic reminders are currently disabled.']),
         '',
         'Check this cycle’s outcome against the Harkonnen in-game. Vote according to our guild discussion if voting is available to us; the Herald does not verify the outcome or whether polls are open.',
