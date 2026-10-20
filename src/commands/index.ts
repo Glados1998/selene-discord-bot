@@ -4,9 +4,8 @@ import { reminderCheck } from './reminder-check.js';
 import { reminderSend } from './reminder-send.js';
 import { schedule } from './schedule.js';
 import { info } from './info.js';
-import { votingStatus, reminderPreference, reminderTest } from './voting.js';
 
 export const commands = [
     ...[status, reminderCheck, reminderSend].map(command => ({ ...command, access: 'admin' as const })),
-    ...[schedule, info, votingStatus, reminderPreference, reminderTest].map(command => ({ ...command, access: 'public' as const })),
+    ...[schedule, info].map(command => ({ ...command, access: 'public' as const })),
 ];

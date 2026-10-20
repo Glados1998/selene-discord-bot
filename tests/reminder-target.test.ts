@@ -40,7 +40,7 @@ test('rejects invalid roles, channels, and insufficient permissions', async () =
     await assert.rejects(resolveReminderTarget(fixture({ type: ChannelType.GuildVoice }), config), /text channel/);
     await assert.rejects(resolveReminderTarget(fixture({ flags: [PermissionFlagsBits.ViewChannel] }), config), /Send Messages/);
     await assert.rejects(resolveReminderTarget(fixture({ flags: [PermissionFlagsBits.SendMessages] }), config), /View Channel/);
-    await resolveReminderTarget(fixture({ mentionable: false }), config);
+    await assert.rejects(resolveReminderTarget(fixture({ mentionable: false }), config), /mentionable/);
 });
 
 test('allows a non-mentionable role when the bot has Mention Everyone', async () => {
