@@ -10,7 +10,7 @@ The bot provides public `/schedule` and `/info` commands, an administrator-only 
 - A Discord application with a bot installed in your server, authorized with the `bot` and `applications.commands` scopes.
 - Access to a server channel where you can invoke the bot's commands.
 
-The bot currently requests only the Guilds intent; no privileged intents are needed for `/status`.
+The bot requests Guilds and Guild Members intents. Enable **Server Members Intent** under Bot → Privileged Gateway Intents in the Discord Developer Portal before starting this version; full leader discovery requires it.
 
 ## Setup
 
@@ -49,7 +49,7 @@ Register slash commands once before trying `/status`, and repeat when command de
 npm run deploy
 ```
 
-This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/schedule`, `/info`, `/status`, `/reminder-check`, and `/reminder-send`. Registration is separate from bot startup.
+This replaces the application's complete guild command list in `GUILD_ID` with the commands defined in this project. Currently that list contains `/schedule`, `/info`, `/status`, `/reminder-check`, `/reminder-send`, `/voting-status`, and `/reminder`. Registration is separate from bot startup.
 
 After starting the bot, look for `Logged in as ...`, then invoke `/status` in the configured server. The private response reports connection readiness, uptime, latency, configured schedule, reminder permissions, and storage writability. It does not send a reminder or prove message delivery. Stop with Ctrl+C; SIGINT and SIGTERM close the Discord client.
 
@@ -77,7 +77,7 @@ With Discord Developer Mode enabled, copy the ID of the **guild leader** role an
 
 Run `npm run deploy` to register the new command, then restart development mode or run `npm run build` and `npm start`. Run `/reminder-check` as a member with the configured **admin role** in the configured server.
 
-The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
+The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role does not need to be mentionable; community announcements do not ping it. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
 
 With scheduling disabled, reminder configuration is validated when this command runs, so `/status` remains available while setup is incomplete. Enabling scheduling makes reminder configuration required at startup. The reusable target resolver lives in `src/reminders/target.ts` and is also used by manual and scheduled delivery.
 
@@ -85,9 +85,9 @@ With scheduling disabled, reminder configuration is validated when this command 
 
 Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with the configured **admin role**, run `/reminder-send` in the configured server.
 
-This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and mentions only `GUILD_LEADER_ROLE_ID`. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
+This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and does not ping roles or individuals. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
 
-The manual message asks members to check this cycle’s Landsraad outcome and vote according to the guild discussion if voting is available to us. It does not track whether anyone has voted. Completion tracking is not implemented; scheduled reminders are sent once per weekly slot.
+The manual message asks members to check this cycle’s Landsraad outcome and vote according to the guild discussion if voting is available to us. Leaders can self-report completion using `/voting-status`. Community announcements are sent once per weekly slot regardless of individual status.
 
 `src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
 
@@ -130,3 +130,21 @@ The administrator commands `/status`, `/reminder-check`, and `/reminder-send` re
 Run `npm run deploy` after this permissions change. In Discord's server integration settings, allow the admin role to use the administrator commands. Ensure server integration permissions allow everyone to use `/schedule` and `/info`. Discord's defaults restrict visibility, and the bot enforces role membership again when a command is invoked.
 
 See [the production deployment guide](docs/production.md) for installation into Selene - Atreides, hosting configuration, persistent storage, and rollout verification.
+
+
+## Personal voting reminders
+
+Community announcements are general, with no role or individual pings. Personal DMs are enabled by default for newly discovered guild leaders. Leaders can re-enable them with `/reminder enabled:true` and disable them with `/reminder enabled:false`. `/reminder` without an option displays the current preference privately. Leaders must allow DMs from the server. The exact configured guild leader role is checked when commands, buttons, and deliveries are used. The bot refreshes the full member list on startup and every five minutes, including while automatic delivery is disabled. Server Members Intent is required. New human members with the leader role are added with reminders enabled. Existing preferences and current-cycle voting status are preserved. Removed leaders are marked inactive, retaining their preferences if they return; failed refreshes do not overwrite the saved roster. Existing stored disabled preferences are respected.
+
+After each successful scheduled voting-open or final community announcement, personal DMs become due **10 minutes after actual delivery**. Preparation and manual announcements do not trigger DMs. Leaders with reminders enabled who have not reported voting receive a DM with:
+
+- **✅ I voted:** records self-reported completion, thanks the leader and their guild, and stops personal reminders for that cycle.
+- **⏹️ Snooze:** acknowledges the choice and suppresses the current reminder; the next scheduled reminder remains eligible. It does not undo a completed vote.
+
+`/voting-status` opens the same controls privately in the server during the scheduled voting window. Both buttons remain available even after reporting a vote. Outside the window it reports that voting is closed. Old-cycle buttons are rejected, and only the intended leader can operate their buttons. The bot does not verify votes or the in-game outcome.
+
+At the next voting opening, status resets for the new cycle and previously tracked reminder DMs are deleted. Reminder preferences remain saved. Deletion removes messages, not the DM conversation or notifications already received. Cleanup failures are retried while a voting window is open. Keep **the entire `data/` directory** on persistent storage: `data/voting-state.json` stores preferences, cycle status, queued deliveries, and sent-message IDs. Run only one bot instance.
+
+Queued personal reminders survive restarts and have a one-hour catch-up window after their due time, bounded by voting close. Each recipient is claimed before Discord is contacted; blocked, failed, or uncertain sends are logged without automatic retries or channel fallback. If Discord accepts a DM but the process crashes before its ID is saved, that message cannot be automatically cleaned up. If a crash occurs between community delivery and saving the personal job, personal delivery for that slot may be missed. These choices avoid duplicate notifications.
+
+Register the two new commands with `npm run deploy`, then rebuild and restart/deploy the bot. Registration and production deployment are separate steps. No DM is sent just by enabling preferences.

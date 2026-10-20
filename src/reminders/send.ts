@@ -10,12 +10,12 @@ const messages = {
     final: 'Final Landsraad reminder for Dune: Awakening: if voting is available to us this cycle and you have not voted yet, please do so according to our guild discussion. Check the in-game outcome; an Atreides victory is not assumed.',
 };
 
-export function buildReminderMessage(roleId: string, kind: ScheduledReminderKind | 'manual' = 'manual', now: Date = new Date()) {
+export function buildReminderMessage(_roleId: string, kind: ScheduledReminderKind | 'manual' = 'manual', now: Date = new Date()) {
     const window = votingWindow(now);
     return {
-        content: `<@&${roleId}> ${messages[kind]}\nVoting opens: ${displayTime(window.opens)}\nVoting closes: ${displayTime(window.closes)}`,
-        // Explicit allowlist prevents @everyone, user, or unrelated role notifications.
-        allowedMentions: { parse: [] as [], roles: [roleId], users: [], repliedUser: false },
+        content: `**Community Landsraad announcement**\n${messages[kind]}\nVoting opens: ${displayTime(window.opens)}\nVoting closes: ${displayTime(window.closes)}`,
+        // Community notices never ping roles or individuals.
+        allowedMentions: { parse: [] as [], roles: [] as [], users: [], repliedUser: false },
     };
 }
 

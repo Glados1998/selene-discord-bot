@@ -5,7 +5,7 @@ import { buildReminderMessage, sendReminder } from '../src/reminders/send.js';
 
 const config = { guildId: '123456789012345678', roleId: '234567890123456789', channelId: '345678901234567890' };
 
-test('delivery sends once to the resolved channel and allows only the configured role mention', async () => {
+test('delivery sends once to the resolved channel and does not ping any role or user', async () => {
     const payloads: unknown[] = [];
     const message = { url: 'https://discord.com/channels/test' };
     const channel = {
@@ -28,7 +28,7 @@ test('delivery sends once to the resolved channel and allows only the configured
     assert.equal(await sendReminder(client, config), message);
     assert.deepEqual(payloads, [buildReminderMessage(config.roleId)]);
     assert.deepEqual(buildReminderMessage(config.roleId).allowedMentions, {
-        parse: [], roles: [config.roleId], users: [], repliedUser: false,
+        parse: [], roles: [], users: [], repliedUser: false,
     });
     channel.permissionsFor = () => new PermissionsBitField();
     await assert.rejects(sendReminder(client, config), /View Channel/);

@@ -64,3 +64,8 @@ For a host without containers, use Node.js 22.18 or later, run `npm ci`, `npm te
 - For updates, build the image, register commands if definitions changed, then run `docker compose up -d`. Preserve the environment and volume.
 
 Delivery claims prevent repeat attempts, but a failed/uncertain delivery is not retried automatically. Review logs and the channel before sending a manual fallback. Hosts and storage do not automatically migrate from the development machine.
+
+
+### Personal reminder rollout
+
+Register `/voting-status` and `/reminder` with the complete command registry and allow guild leaders to invoke them in server integration settings. Runtime checks still require the exact guild leader role. Preserve `/app/data/voting-state.json` alongside delivery claims on the existing volume. Enable **Server Members Intent** in the Discord Developer Portal before deploying. Personal reminders default to enabled for newly discovered leaders; `/reminder enabled:false` disables them. The complete roster refreshes on startup and every five minutes without replacing individual preferences. Existing saved disabled preferences are retained. Test with one consenting leader whose server DMs are enabled: verify the private command response, the next scheduled DM approximately ten minutes after its community announcement, both buttons, and next-cycle cleanup. Community announcements no longer mention the leader role or require Mention Everyone permissions. Manual `/reminder-send` sends only the community announcement.
