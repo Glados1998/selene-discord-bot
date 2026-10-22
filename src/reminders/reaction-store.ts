@@ -1,5 +1,5 @@
 /** Durable message ownership and cycle-scoped choices. Run one bot process per data directory. */
-import { mkdir, open, readFile, rename, rm } from 'node:fs/promises';
+import { mkdir, open, readFile, readdir, rename, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
@@ -12,6 +12,7 @@ export interface ReminderMessage {
     opens: number;
     closes: number;
     test: boolean;
+    reactable?: boolean;
 }
 
 function safeKey(value: string): string {
@@ -51,6 +52,21 @@ export class ReactionStore {
         await this.writeRecord('messages', messageId, binding);
     }
 
+    async messageIds(): Promise<string[]> {
+        try {
+            return (await readdir(join(this.directory, 'messages')))
+                .filter(name => /^[a-zA-Z0-9-]+\.json$/.test(name))
+                .map(name => name.slice(0, -5));
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+            throw error;
+        }
+    }
+
+    async forgetMessage(messageId: string): Promise<void> {
+        await rm(join(this.directory, 'messages', `${safeKey(messageId)}.json`), { force: true });
+    }
+
     async message(messageId: string): Promise<ReminderMessage | undefined> {
         let value: unknown;
         try { value = JSON.parse(await readFile(join(this.directory, 'messages', `${safeKey(messageId)}.json`), 'utf8')); }
@@ -61,7 +77,8 @@ export class ReactionStore {
         const record = value as ReminderMessage | null;
         if (!record || typeof record.guildId !== 'string' || typeof record.userId !== 'string' ||
             typeof record.channelId !== 'string' || !Number.isSafeInteger(record.opens) ||
-            !Number.isSafeInteger(record.closes) || record.closes <= record.opens || typeof record.test !== 'boolean') {
+            !Number.isSafeInteger(record.closes) || record.closes <= record.opens || typeof record.test !== 'boolean' ||
+            (record.reactable !== undefined && typeof record.reactable !== 'boolean')) {
             throw new Error('Invalid stored reminder message.');
         }
         return record;

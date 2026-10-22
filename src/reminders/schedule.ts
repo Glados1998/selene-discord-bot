@@ -62,6 +62,11 @@ export function votingWindow(now: Date = new Date()) {
     return { opens: localInstant(sunday, '21:00'), closes: localInstant(addDays(sunday, 2), '06:00') };
 }
 
+/** Latest Tuesday 06:00 closing; votingWindow advances at the exact closing instant. */
+export function latestCycleClosing(now: Date = new Date()): Date {
+    return localInstant(addDays(localCalendar(votingWindow(now).closes), -7), '06:00');
+}
+
 export function finalReminder(now: Date, time: string): Date {
     return localInstant(addDays(localCalendar(votingWindow(now).closes), -1), time);
 }

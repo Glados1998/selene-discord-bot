@@ -82,3 +82,10 @@ Preserve the entire `data/` volume, including `reminder-reactions/`. Restart wit
 Reactions added or removed while the bot is offline are not reconciled from message history. Users should wait for acknowledgement and remove/re-add a reaction if necessary after the bot reconnects. These live checks remain separate from the automated tests.
 
 After saving a real choice, verify that removing a rejected reaction leaves it unchanged. Removing the accepted reaction must confirm it was cleared and make the recipient eligible for an unsent final reminder. Repeat after restarting; stale-cycle removals must not change the current cycle.
+
+
+### Voting-close DM cleanup
+
+Restart with the updated bot and retain `data/reminder-reactions/`. At Tuesday 06:00 in Europe/Amsterdam, verify the closing cycle’s tracked reminders and new-version acknowledgements disappear. They must remain until voting closes; upcoming-cycle messages must stay intact. User-authored messages must stay intact. A restart after a missed closing must catch up cleanup without sending an out-of-window reminder.
+
+Cleanup runs even with automatic reminders disabled and retries failures hourly. Inspect `Closed-cycle DM cleanup` logs for deleted, already-deleted, and failed message IDs. Do not clear delivery claims as part of cleanup. Older untracked bot replies are outside automatic cleanup. Local boundary, restart, permission-failure, and ownership tests do not replace live verification.

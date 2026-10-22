@@ -23,13 +23,14 @@ async function setup(context: TestContext) {
     context.after(() => rm(directory, { recursive: true, force: true }));
     return { directory, store: new ReactionStore(directory) };
 }
+let acknowledgementId = 0;
 function event(emoji = '✅') {
     const replies: { content: string; allowedMentions: { parse: string[] } }[] = [];
     const reaction = {
         partial: true, client: { user: { id: 'bot' } }, emoji: { name: emoji, id: null },
         message: { id: 'message-1', channelId: 'dm-leader', guildId: null, partial: true },
     };
-    const user = { id: 'leader', partial: true, bot: false, send: async (reply: typeof replies[number]) => { replies.push(reply); } };
+    const user = { id: 'leader', partial: true, bot: false, send: async (reply: typeof replies[number]) => { replies.push(reply); return { id: `ack-${++acknowledgementId}`, channelId: 'dm-leader' }; } };
     return { reaction, user, replies };
 }
 async function react(value: ReturnType<typeof event>, store: ReactionStore, now = opens) {
@@ -276,4 +277,17 @@ test('clearing a migrated choice does not reactivate a second legacy flag', asyn
     assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), undefined);
     await react(event('💤'), restarted);
     assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), 'snoozed');
+});
+
+test('acknowledgements are tracked for cleanup but cannot accept voting reactions', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    const first = event(); await react(first, store);
+    const replyId = (await store.messageIds()).find(id => id !== 'message-1')!;
+    assert.ok(replyId);
+    assert.deepEqual(await store.message(replyId), { ...binding, reactable: false });
+    const replyReaction = event('💤'); replyReaction.reaction.message.id = replyId;
+    await react(replyReaction, store);
+    assert.equal(replyReaction.replies.length, 0);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
 });

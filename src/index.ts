@@ -5,31 +5,34 @@ import { loadBotConfig, loadScheduleConfig, loadCommandAccessConfig } from './co
 import { Events } from 'discord.js';
 import { DeliveryStore } from './reminders/delivery-store.js';
 import { createScheduler } from './reminders/scheduler.js';
+import { createCycleCleanup } from './reminders/cleanup.js';
 import { sendReminder } from './reminders/send.js';
 
 async function main(): Promise<void> {
     const config = loadBotConfig();
     const schedule = loadScheduleConfig();
-    const client = createBot(loadCommandAccessConfig());
+    const access = loadCommandAccessConfig();
+    const client = createBot(access);
     const store = new DeliveryStore('data/reminder-deliveries');
-    const scheduler = schedule ? createScheduler({
+    const scheduler = createScheduler({
         schedule,
-        guildId: schedule.guildId,
+        guildId: access.guildId,
+        cleanup: createCycleCleanup(client, access.guildId),
         claim: key => store.claim(key),
-        send: kind => sendReminder(client, schedule, kind),
+        send: kind => sendReminder(client, schedule!, kind),
         isReady: () => client.isReady(),
-    }) : undefined;
+    });
     client.once(Events.ClientReady, () => {
-        if (scheduler) {
+        if (schedule) {
             console.log(`Reminders enabled (Europe/Amsterdam): Sunday 21:00, Monday ${schedule!.mondayTime}.`);
-            scheduler.start();
         } else {
-            console.log('Automatic reminders are disabled.');
+            console.log('Automatic reminders are disabled; cycle DM cleanup remains active.');
         }
+        scheduler.start();
     });
 
     async function shutdown(): Promise<void> {
-        await scheduler?.stop();
+        await scheduler.stop();
         await client.destroy();
     }
 

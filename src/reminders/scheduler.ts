@@ -2,7 +2,8 @@
 import { dueReminders, type ScheduleConfig, type ScheduledReminderKind } from './schedule.js';
 
 interface SchedulerOptions {
-    schedule: ScheduleConfig;
+    schedule: ScheduleConfig | undefined;
+    cleanup?: (now: Date) => Promise<unknown>;
     guildId: string;
     claim: (key: string) => Promise<boolean>;
     send: (kind: ScheduledReminderKind) => Promise<unknown>;
@@ -19,7 +20,10 @@ export function createScheduler(options: SchedulerOptions) {
 
     async function run(): Promise<void> {
         if (!options.isReady()) return;
-        for (const occurrence of dueReminders(options.now?.() ?? new Date(), options.schedule)) {
+        const now = options.now?.() ?? new Date();
+        try { await options.cleanup?.(now); } catch (error) { report(error); }
+        if (!options.schedule) return;
+        for (const occurrence of dueReminders(now, options.schedule)) {
             if (stopped) break;
             try {
                 if (await options.claim(`${options.guildId}-${occurrence.key}`)) {

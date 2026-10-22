@@ -20,10 +20,13 @@ export async function handleReminderReaction(
         : reaction.emoji.name === reminderReactions.snoozed ? 'snoozed' : undefined;
     if (!choice) return;
     // IDs remain available on partial events after a restart. No message-content parsing or cache trust.
-    const reply = (content: string) => user.send({ content, allowedMentions: { parse: [] } });
     await store.withRecipient(guildId, user.id, async () => {
         const binding = await store.message(reaction.message.id);
-        if (!binding || binding.guildId !== guildId || binding.userId !== user.id || binding.channelId !== reaction.message.channelId) return;
+        if (!binding || binding.reactable === false || binding.guildId !== guildId || binding.userId !== user.id || binding.channelId !== reaction.message.channelId) return;
+        const reply = async (content: string) => {
+            const message = await user.send({ content, allowedMentions: { parse: [] } });
+            await store.bind(message.id, { ...binding, channelId: message.channelId, reactable: false });
+        };
         const window = votingWindow(now);
         if (now.getTime() >= binding.closes || (!binding.test &&
             (now.getTime() < binding.opens || binding.opens !== window.opens.getTime()))) {

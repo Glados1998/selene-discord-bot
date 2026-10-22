@@ -107,6 +107,16 @@ Keep `data/reminder-reactions/` alongside `data/reminder-deliveries/` on persist
 
 Delivery results report reaction setup failures separately from DM failures. If a choice cannot be saved, the bot asks the user to retry and does not claim it succeeded. If acknowledgement delivery fails after saving, the choice remains effective.
 
+## Keep reminder DMs tidy
+
+At each Tuesday 06:00 voting close (Europe/Amsterdam), the bot deletes tracked messages from the cycle that just ended and any older cycles: reminder DMs, previews, and reaction acknowledgements or errors. It keeps messages belonging to upcoming cycles. Cleanup starts within the normal 30-second polling interval after voting closes, following daylight saving changes.
+
+If the bot was offline, cleanup catches up when it reconnects, even after the one-hour reminder catch-up window. Failed deletions remain recorded and retry hourly; already-deleted messages are safely forgotten. Cleanup remains enabled when `REMINDERS_ENABLED=false`, so manually sent reminders are cleaned too.
+
+The bot only deletes recorded messages that it authored in the matching recipient’s DM. User messages and untracked conversation history are untouched. Earlier reminder DMs with saved IDs are eligible, but acknowledgement/error messages from before tracking was introduced cannot be removed automatically. No extra cleanup notification is sent.
+
+Preserve `data/reminder-reactions/` to retain message IDs. Cleanup removes message records only after successful deletion (or Discord confirms the message is already gone). It keeps delivery claims and cycle choices, so clearing the chat cannot resend a reminder or change next cycle’s eligibility. Restart the updated bot to enable cleanup; no slash-command registration change is needed.
+
 ## Automatic weekly reminders
 
 The agreed schedule uses **Europe/Amsterdam**, including daylight saving changes:
