@@ -54,7 +54,6 @@ export function loadScheduleConfig(env: Environment = process.env) {
     if (enabled === 'false') return undefined;
     return {
         ...loadReminderConfig(env),
-        fridayTime: eveningTime(env, 'FRIDAY_REMINDER_TIME'),
         mondayTime: finalReminderTime(env),
     };
 }

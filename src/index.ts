@@ -21,7 +21,7 @@ async function main(): Promise<void> {
     }) : undefined;
     client.once(Events.ClientReady, () => {
         if (scheduler) {
-            console.log(`Reminders enabled (Europe/Amsterdam): Friday ${schedule!.fridayTime}, Sunday 21:00, Monday ${schedule!.mondayTime}.`);
+            console.log(`Reminders enabled (Europe/Amsterdam): Sunday 21:00, Monday ${schedule!.mondayTime}.`);
             scheduler.start();
         } else {
             console.log('Automatic reminders are disabled.');

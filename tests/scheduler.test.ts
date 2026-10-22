@@ -9,7 +9,7 @@ import { DeliveryStore } from '../src/reminders/delivery-store.js';
 import { createScheduler } from '../src/reminders/scheduler.js';
 import { buildReminderMessage } from '../src/reminders/send.js';
 
-const schedule = { fridayTime: '20:00', mondayTime: '20:00' };
+const schedule = { mondayTime: '20:00' };
 const env = {
     REMINDERS_ENABLED: 'true', GUILD_ID: '123456789012345678',
     GUILD_LEADER_ROLE_ID: '234567890123456789', REMINDER_CHANNEL_ID: '345678901234567890',
@@ -19,8 +19,8 @@ const env = {
 test('schedule validates enabled settings and can be disabled without reminder configuration', () => {
     assert.equal(loadScheduleConfig({}), undefined);
     assert.equal(loadScheduleConfig({ REMINDERS_ENABLED: 'false' }), undefined);
-    assert.equal(loadScheduleConfig(env)?.fridayTime, '20:00');
-    for (const key of ['FRIDAY_REMINDER_TIME', 'MONDAY_REMINDER_TIME']) {
+    assert.equal(loadScheduleConfig({ ...env, FRIDAY_REMINDER_TIME: undefined })?.mondayTime, '20:00');
+    for (const key of ['MONDAY_REMINDER_TIME']) {
         for (const value of ['', '20:60', '8pm']) {
             assert.throws(() => loadScheduleConfig({ ...env, [key]: value }), new RegExp(key));
         }
@@ -28,12 +28,10 @@ test('schedule validates enabled settings and can be disabled without reminder c
     assert.throws(() => loadScheduleConfig({ REMINDERS_ENABLED: 'yes' }), /REMINDERS_ENABLED/);
 });
 
-test('all three slots follow Amsterdam winter and summer time, including weeks after DST transitions', () => {
+test('both slots follow Amsterdam winter and summer time, including weeks after DST transitions', () => {
     for (const [date, kind] of [
-        ['2026-10-09T18:00:00Z', 'preparation'],
         ['2026-10-11T19:00:00Z', 'voting-open'],
         ['2026-10-12T18:00:00Z', 'final'],
-        ['2026-10-30T19:00:00Z', 'preparation'],
         ['2026-11-01T20:00:00Z', 'voting-open'],
         ['2026-11-02T19:00:00Z', 'final'],
         ['2026-03-29T19:00:00Z', 'voting-open'],
@@ -41,9 +39,9 @@ test('all three slots follow Amsterdam winter and summer time, including weeks a
     ]) {
         assert.equal(dueReminders(new Date(date!), schedule)[0]?.kind, kind, date);
     }
-    assert.deepEqual(dueReminders(new Date('2026-10-09T17:59:59Z'), schedule), []);
-    assert.equal(dueReminders(new Date('2026-10-09T18:59:59Z'), schedule).length, 1);
-    assert.deepEqual(dueReminders(new Date('2026-10-09T19:00:00Z'), schedule), []);
+    assert.deepEqual(dueReminders(new Date('2026-10-11T18:59:59Z'), schedule), []);
+    assert.equal(dueReminders(new Date('2026-10-11T19:59:59Z'), schedule).length, 1);
+    assert.deepEqual(dueReminders(new Date('2026-10-11T20:00:00Z'), schedule), []);
     assert.deepEqual(dueReminders(new Date('2026-10-13T04:00:00Z'), schedule), []);
 });
 
@@ -70,7 +68,7 @@ test('scheduler skips offline clients, serializes ticks, and does not retry unce
     const failures: unknown[] = [];
     let ready = false;
     let sends = 0;
-    let now = new Date('2026-10-09T18:00:00Z');
+    let now = new Date('2026-10-11T19:00:00Z');
     const scheduler = createScheduler({
         schedule, guildId: env.GUILD_ID,
         isReady: () => ready, now: () => now,
@@ -89,11 +87,11 @@ test('scheduler skips offline clients, serializes ticks, and does not retry unce
     await scheduler.tick();
     assert.equal(sends, 1);
     assert.equal(failures.length, 1);
-    now = new Date('2026-10-16T18:00:00Z');
+    now = new Date('2026-10-18T19:00:00Z');
     await scheduler.tick();
     assert.equal(sends, 2);
     await scheduler.stop();
-    now = new Date('2026-10-23T18:00:00Z');
+    now = new Date('2026-10-25T20:00:00Z');
     await scheduler.tick();
     assert.equal(sends, 2);
 });
@@ -103,7 +101,7 @@ test('scheduler never sends when durable storage fails', async () => {
     let errors = 0;
     const scheduler = createScheduler({
         schedule, guildId: env.GUILD_ID, isReady: () => true,
-        now: () => new Date('2026-10-09T18:00:00Z'),
+        now: () => new Date('2026-10-11T19:00:00Z'),
         claim: async () => { throw new Error('Disk unavailable'); },
         send: async () => { sends++; }, onError: () => { errors++; },
     });
@@ -114,13 +112,12 @@ test('scheduler never sends when durable storage fails', async () => {
 });
 
 test('scheduled messages describe each phase and disable all mentions', () => {
-    for (const kind of ['preparation', 'voting-open', 'final'] as const) {
+    for (const kind of ['voting-open', 'final'] as const) {
         const message = buildReminderMessage(env.GUILD_LEADER_ROLE_ID, kind);
         assert.deepEqual(message.allowedMentions.roles, []);
         assert.deepEqual(message.allowedMentions.parse, []);
         assert.match(message.content, /<t:\d+:F> \(<t:\d+:R>\)/);
     }
-    assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'preparation').content, /discussing/);
     assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'voting-open').content, /now open/);
     assert.match(buildReminderMessage(env.GUILD_LEADER_ROLE_ID, 'final').content, /Voting closes: <t:/);
 });
@@ -129,4 +126,8 @@ test('scheduled messages describe each phase and disable all mentions', () => {
 test('final reminder defaults to Monday evening and never runs on Tuesday', () => {
     assert.equal(loadScheduleConfig({ ...env, MONDAY_REMINDER_TIME: undefined, TUESDAY_REMINDER_TIME: '19:00' })?.mondayTime, '20:00');
     assert.deepEqual(dueReminders(new Date('2026-10-20T17:00:00Z'), schedule), []);
+});
+
+test('Friday no longer sends a preparation DM', () => {
+    assert.deepEqual(dueReminders(new Date('2026-10-23T18:00:00Z'), schedule), []);
 });

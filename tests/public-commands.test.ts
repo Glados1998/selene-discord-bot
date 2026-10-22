@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildScheduleMessage } from '../src/commands/schedule.js';
-import { votingWindow, displayTime, nextPreparation, finalReminder } from '../src/reminders/schedule.js';
+import { votingWindow, displayTime, finalReminder } from '../src/reminders/schedule.js';
 
 const now = new Date('2026-10-16T12:00:00Z');
 test('public schedule renders configured reminders and voting dates as localized timestamps', () => {
-    const message = buildScheduleMessage({ fridayTime: '18:30', mondayTime: '20:15' }, now);
-    for (const date of ['2026-10-16T16:30:00Z', '2026-10-18T19:00:00Z', '2026-10-19T18:15:00Z', '2026-10-20T04:00:00Z']) {
+    const message = buildScheduleMessage({ mondayTime: '20:15' }, now);
+    for (const date of ['2026-10-18T19:00:00Z', '2026-10-19T18:15:00Z', '2026-10-20T04:00:00Z']) {
         assert.ok(message.includes(displayTime(new Date(date))), date);
     }
     assert.match(message, /your timezone/);
@@ -37,6 +37,5 @@ test('current window stays selected from opening until the exact closing boundar
         assert.equal(votingWindow(new Date(observed)).opens.toISOString(), '2026-10-18T19:00:00.000Z');
     }
     assert.equal(votingWindow(new Date('2026-10-20T04:00:00Z')).opens.toISOString(), '2026-10-25T20:00:00.000Z');
-    assert.equal(nextPreparation(new Date('2026-10-23T18:01:00Z'), '20:00').toISOString(), '2026-10-30T19:00:00.000Z');
     assert.equal(finalReminder(new Date('2026-10-23T12:00:00Z'), '19:00').toISOString(), '2026-10-26T18:00:00.000Z');
 });

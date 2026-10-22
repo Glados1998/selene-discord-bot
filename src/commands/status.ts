@@ -20,7 +20,7 @@ export const status = {
         try {
             const schedule = loadScheduleConfig();
             lines.push(schedule
-                ? `Configured schedule (Europe/Amsterdam): Friday ${schedule.fridayTime}, Sunday 21:00, Monday ${schedule.mondayTime}`
+                ? `Configured schedule (Europe/Amsterdam): Sunday 21:00, Monday ${schedule.mondayTime}`
                 : 'Automatic reminders: disabled');
         } catch {
             lines.push('Schedule configuration: invalid');

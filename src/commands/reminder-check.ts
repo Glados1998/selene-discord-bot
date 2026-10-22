@@ -19,7 +19,7 @@ export const reminderCheck = {
             const { role, leaders } = await resolveReminderTarget(interaction.client, config);
             const schedule = loadScheduleConfig();
             const scheduleStatus = schedule
-                ? `Weekly schedule (Europe/Amsterdam): Friday ${schedule.fridayTime}, Sunday 21:00, Monday ${schedule.mondayTime}. Voting closes Tuesday 06:00. The bot must remain running.`
+                ? `Weekly schedule (Europe/Amsterdam): Sunday 21:00, Monday ${schedule.mondayTime}. Voting closes Tuesday 06:00. The bot must remain running.`
                 : 'Automatic reminders are disabled.';
             await interaction.editReply({
                 content: `Reminder target is ready.\nRole: <@&${role.id}>\nHuman DM recipients: ${leaders.size}\n${scheduleStatus}\nDM privacy settings can only be checked by sending. No reminder was sent by this check.`,

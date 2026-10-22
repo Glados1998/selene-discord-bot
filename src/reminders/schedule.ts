@@ -1,8 +1,7 @@
 /** Wall-clock scheduling uses Amsterdam time, independent of the host timezone and UTC offset. */
 export const REMINDER_TIME_ZONE = 'Europe/Amsterdam';
-export type ScheduledReminderKind = 'preparation' | 'voting-open' | 'final';
+export type ScheduledReminderKind = 'voting-open' | 'final';
 export interface ScheduleConfig {
-    fridayTime: string;
     mondayTime: string;
 }
 
@@ -17,7 +16,6 @@ export function dueReminders(now: Date, config: ScheduleConfig) {
     const parts = Object.fromEntries(localClock.formatToParts(now).map(part => [part.type, part.value]));
     const minuteOfDay = Number(parts.hour) * 60 + Number(parts.minute);
     const slots: { weekday: string; time: string; kind: ScheduledReminderKind }[] = [
-        { weekday: 'Fri', time: config.fridayTime, kind: 'preparation' },
         { weekday: 'Sun', time: '21:00', kind: 'voting-open' },
         { weekday: 'Mon', time: config.mondayTime, kind: 'final' },
     ];
@@ -62,13 +60,6 @@ export function votingWindow(now: Date = new Date()) {
     let sunday = addDays(today, -today.getUTCDay());
     if (now >= localInstant(addDays(sunday, 2), '06:00')) sunday = addDays(sunday, 7);
     return { opens: localInstant(sunday, '21:00'), closes: localInstant(addDays(sunday, 2), '06:00') };
-}
-
-export function nextPreparation(now: Date, time: string): Date {
-    const today = localCalendar(now);
-    let friday = addDays(today, (5 - today.getUTCDay() + 7) % 7);
-    if (localInstant(friday, time) < now) friday = addDays(friday, 7);
-    return localInstant(friday, time);
 }
 
 export function finalReminder(now: Date, time: string): Date {

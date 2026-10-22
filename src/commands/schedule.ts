@@ -1,6 +1,6 @@
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadScheduleConfig } from '../config.js';
-import { displayTime, votingWindow, nextPreparation, finalReminder, type ScheduleConfig } from '../reminders/schedule.js';
+import { displayTime, votingWindow, finalReminder, type ScheduleConfig } from '../reminders/schedule.js';
 
 export function buildScheduleMessage(schedule: ScheduleConfig | undefined, now: Date = new Date()): string {
     const window = votingWindow(now);
@@ -13,7 +13,6 @@ export function buildScheduleMessage(schedule: ScheduleConfig | undefined, now: 
         '',
         ...(schedule ? [
             '**Reminders**',
-            `• Next preparation: ${displayTime(nextPreparation(now, schedule.fridayTime))} — discuss our preferred decrees.`,
             `• Voting window reminder: ${displayTime(window.opens)}.`,
             `• Final reminder: ${displayTime(finalReminder(now, schedule.mondayTime))}.`,
         ] : ['Automatic reminders are currently disabled.']),

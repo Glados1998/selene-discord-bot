@@ -84,11 +84,11 @@ With scheduling disabled, reminder configuration is validated when this command 
 
 Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with the configured **admin role**, run `/reminder-send` in the configured server.
 
-`/reminder-send test:true` sends a clearly labelled opening-message preview only to the invoking admin, even outside voting hours. It does not fetch the leader roster or record a delivery claim. Use this first to check the wording and your DM privacy settings.
+`/reminder-send test:true` sends a clearly labelled opening-message preview only to the invoking admin, even outside voting hours. It does not fetch the leader roster or record a delivery claim. Use this first to check the wording and your DM privacy settings. Preview the second message with `/reminder-send kind:final test:true`; use `kind:voting-open` for the opening message (the default). The same `kind` option selects real manual delivery during the voting window. Re-register commands with `npm run deploy` to expose this option.
 
 `/reminder-send` sends a personal DM to every human member with `GUILD_LEADER_ROLE_ID`, using their server display name. It works only during the scheduled Sunday 21:00–Tuesday 06:00 voting window. It sends no channel messages or role pings. The private response reports sent, already-attempted, and failed/uncertain counts; logs identify failed recipients.
 
-Manual and automatic opening reminders share a persistent per-recipient, per-cycle claim. Repeated commands skip previous attempts; preparation and final reminders have separate claims. Blocked DMs do not stop delivery to other leaders. Failed or uncertain attempts remain claimed and are not retried, because Discord might have accepted the message. The bot does not track votes or query the game outcome.
+Manual and automatic reminders of the same kind share a persistent per-recipient, per-cycle claim. Repeated commands skip previous attempts; opening and closing-soon reminders have separate claims. Blocked DMs do not stop delivery to other leaders. Failed or uncertain attempts remain claimed and are not retried, because Discord might have accepted the message. The bot does not track votes or query the game outcome.
 
 `src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
 
@@ -98,19 +98,17 @@ The agreed schedule uses **Europe/Amsterdam**, including daylight saving changes
 
 | Day | Local time | Message |
 | --- | --- | --- |
-| Friday | 20:00 | Begin discussion or review prior decisions to prepare for voting |
 | Sunday | 21:00 | Announce the scheduled voting window and ask members to check the outcome |
 | Monday | 20:00 | Final reminder before voting closes Tuesday at 06:00 |
 
-Voting runs from Sunday 21:00 to Tuesday 06:00 in Europe/Amsterdam, following daylight saving changes. `/schedule` and reminder messages use Discord timestamps so each reader sees their local date/time and a relative countdown. `/schedule` shows the current window until closing, then the next window; preparation shows its next occurrence.
+Voting runs from Sunday 21:00 to Tuesday 06:00 in Europe/Amsterdam, following daylight saving changes. `/schedule` and reminder messages use Discord timestamps so each reader sees their local date/time and a relative countdown. `/schedule` shows the current window until closing, then the next window.
 
-`MONDAY_REMINDER_TIME` defaults to `20:00` and accepts times from `18:00` through `22:59`. The previously introduced `TUESDAY_REMINDER_TIME` is ignored. Update hosting variables when deploying.
+`MONDAY_REMINDER_TIME` defaults to `20:00` and accepts times from `18:00` through `22:59`. The old `FRIDAY_REMINDER_TIME` and `TUESDAY_REMINDER_TIME` variables are ignored. There is no Friday preparation DM. Update hosting variables when deploying.
 
 These reminders repeat every week and follow the configured timetable. Wording is conditional: Atreides may lose to the Harkonnen, so members are asked to check the outcome and vote only if voting is available to us. The bot does not query the game to determine the winner, confirm that polls opened, or retrieve previous discussions.
 
 ```dotenv
 REMINDERS_ENABLED=true
-FRIDAY_REMINDER_TIME=20:00
 MONDAY_REMINDER_TIME=20:00
 ```
 

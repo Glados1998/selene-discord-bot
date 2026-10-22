@@ -10,6 +10,8 @@ export const reminderSend = {
     data: new SlashCommandBuilder()
         .setName('reminder-send')
         .setDescription('DM guild leaders about the current Landsraad voting window')
+        .addStringOption(option => option.setName('kind').setDescription('Which reminder to send or preview (default: voting open)')
+            .addChoices({ name: 'Voting open', value: 'voting-open' }, { name: 'Closing soon', value: 'final' }))
         .addBooleanOption(option => option.setName('test').setDescription('Send a labelled preview only to yourself, at any time'))
         .setDefaultMemberPermissions(0),
     async execute(interaction: ChatInputCommandInteraction): Promise<void> {
@@ -26,8 +28,9 @@ export const reminderSend = {
                 await interaction.editReply('Run this command in the configured Selene - Atreides server.');
                 return;
             }
+            const kind = interaction.options.getString('kind') === 'final' ? 'final' : 'voting-open';
             if (interaction.options.getBoolean('test') === true) {
-                const payload = buildReminderMessage(interaction.user.displayName, 'voting-open');
+                const payload = buildReminderMessage(interaction.user.displayName, kind);
                 payload.content = `**TEST PREVIEW — this does not confirm voting is open.**\n${payload.content}`;
                 try {
                     await interaction.user.send(payload);
@@ -39,7 +42,7 @@ export const reminderSend = {
             }
             let message;
             try {
-                message = await sendReminder(interaction.client, config);
+                message = await sendReminder(interaction.client, config, kind);
             } catch (error) {
                 console.error('Reminder delivery failed:', error);
                 await interaction.editReply('Could not confirm reminder delivery. Voting must be within its scheduled window. Use /reminder-check to verify the leader roster, or /reminder-send test:true for a preview.');
