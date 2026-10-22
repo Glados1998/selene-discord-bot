@@ -10,7 +10,7 @@ The bot provides public `/schedule` and `/info` commands, an administrator-only 
 - A Discord application with a bot installed in your server, authorized with the `bot` and `applications.commands` scopes.
 - Access to a server channel where you can invoke the bot's commands.
 
-Enable **Server Members Intent** in Discord Developer Portal → Bot before starting this version. The bot requests Guilds and GuildMembers to fetch the full leader roster.
+Enable **Server Members Intent** in Discord Developer Portal → Bot before starting this version. The bot requests Guilds and GuildMembers to fetch the full leader roster, plus DirectMessageReactions to handle reminder responses.
 
 ## Setup
 
@@ -86,11 +86,26 @@ Register the updated command list with `npm run deploy`, then restart the bot (r
 
 `/reminder-send test:true` sends a clearly labelled opening-message preview only to the invoking admin, even outside voting hours. It does not fetch the leader roster or record a delivery claim. Use this first to check the wording and your DM privacy settings. Preview the second message with `/reminder-send kind:final test:true`; use `kind:voting-open` for the opening message (the default). The same `kind` option selects real manual delivery during the voting window. Re-register commands with `npm run deploy` to expose this option.
 
-`/reminder-send` sends a personal DM to every human member with `GUILD_LEADER_ROLE_ID`, using their server display name. It works only during the scheduled Sunday 21:00–Tuesday 06:00 voting window. It sends no channel messages or role pings. The private response reports sent, already-attempted, and failed/uncertain counts; logs identify failed recipients.
+`/reminder-send` sends a personal DM to every human member with `GUILD_LEADER_ROLE_ID`, using their server display name. It works only during the scheduled Sunday 21:00–Tuesday 06:00 voting window. It sends no channel messages or role pings. The private response reports sent, already-attempted, voted/snoozed, and failed/uncertain counts; logs identify failed recipients.
 
-Manual and automatic reminders of the same kind share a persistent per-recipient, per-cycle claim. Repeated commands skip previous attempts; opening and closing-soon reminders have separate claims. Blocked DMs do not stop delivery to other leaders. Failed or uncertain attempts remain claimed and are not retried, because Discord might have accepted the message. The bot does not track votes or query the game outcome.
+Manual and automatic reminders of the same kind share a persistent per-recipient, per-cycle claim. Repeated commands skip previous attempts; opening and closing-soon reminders have separate claims. Blocked DMs do not stop delivery to other leaders. Failed or uncertain attempts remain claimed and are not retried, because Discord might have accepted the message. The bot records self-reported votes through reactions; it does not verify votes or query the game outcome.
 
 `src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
+
+## Respond to a reminder
+
+Both reminder DMs include two reactions:
+
+- ✅ **I voted** records the recipient’s confirmation and skips remaining reminders, including Monday’s final DM, for that voting cycle.
+- 💤 **Snooze this cycle** silences remaining reminders for that cycle without marking a vote.
+
+The bot acknowledges each choice in a separate DM. Only the recipient of that tracked message can use it. Choices expire with the Sunday–Tuesday voting window, so next week’s reminders resume automatically. Reacting to an expired reminder returns an explanation and cannot affect the new cycle. Removing a reaction does not undo a saved choice.
+
+`/reminder-send test:true` includes working reactions. Test acknowledgements explicitly say that real reminder settings are unchanged; previews can be tested outside voting hours. Restart the updated bot and send a new preview. Existing DMs sent before this feature are not registered for reactions. This change does not require new slash-command registration.
+
+Keep `data/reminder-reactions/` alongside `data/reminder-deliveries/` on persistent storage. Saved choices and message ownership survive restarts; reactions added after restarting work on previously tracked DMs. The bot must be online to process new reactions. If no acknowledgement arrives, remove and re-add the reaction while it is online. A message already in flight cannot be cancelled by a later reaction.
+
+Delivery results report reaction setup failures separately from DM failures. If a choice cannot be saved, the bot asks the user to retry and does not claim it succeeded. If acknowledgement delivery fails after saving, the choice remains effective.
 
 ## Automatic weekly reminders
 
@@ -118,7 +133,7 @@ The bot must remain running on a machine with network access. Scheduling runs in
 
 Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Review DM delivery logs before using `/reminder-send`; previous recipient attempts remain skipped. Removing claims can cause duplicate notifications.
 
-The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transitions, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
+The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, `delivery-store.ts` persists claims, and `reaction-store.ts` / `reactions.ts` handle cycle choices and DM responses. Local tests cover summer/winter time, daylight saving transitions, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
 
 ## Production and command permissions
 

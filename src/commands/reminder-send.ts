@@ -1,6 +1,8 @@
 /** Manual delivery after central authorization; the guild lock only prevents concurrent sends. */
 import { MessageFlags, SlashCommandBuilder, type ChatInputCommandInteraction } from 'discord.js';
 import { loadReminderConfig } from '../config.js';
+import { addReminderReactions } from '../reminders/reactions.js';
+import { votingWindow } from '../reminders/schedule.js';
 import { buildReminderMessage, sendReminder } from '../reminders/send.js';
 
 // Prevent concurrent manual requests from producing overlapping deliveries.
@@ -33,8 +35,18 @@ export const reminderSend = {
                 const payload = buildReminderMessage(interaction.user.displayName, kind);
                 payload.content = `**TEST PREVIEW — this does not confirm voting is open.**\n${payload.content}`;
                 try {
-                    await interaction.user.send(payload);
-                    await interaction.editReply('Test DM sent only to you. No cycle delivery was recorded.');
+                    const message = await interaction.user.send(payload);
+                    const window = votingWindow();
+                    try {
+                        await addReminderReactions(message, {
+                            guildId, userId: interaction.user.id, channelId: message.channelId,
+                            opens: window.opens.getTime(), closes: window.closes.getTime(), test: true,
+                        });
+                    } catch {
+                        await interaction.editReply('Test DM sent, but its reactions could not be set up. Check the bot storage and connection before retrying.');
+                        return;
+                    }
+                    await interaction.editReply('Test DM sent only to you. Try ✅ or 💤 in the DM; test reactions do not change your real reminder settings. No cycle delivery was recorded.');
                 } catch {
                     await interaction.editReply('Could not confirm your test DM. Check your DMs and server privacy settings.');
                 }
@@ -49,7 +61,7 @@ export const reminderSend = {
                 return;
             }
             // Keep confirmation failures separate: delivery has already succeeded.
-            await interaction.editReply({ content: `Leader DMs: ${message.sent} sent, ${message.skipped} already attempted this cycle, ${message.failed.length} failed or uncertain. Failed attempts are not retried automatically.${message.failed.length ? " Check the server logs for recipient IDs." : ""}`, allowedMentions: { parse: [] } });
+            await interaction.editReply({ content: `Leader DMs: ${message.sent} sent, ${message.skipped} already attempted this cycle, ${message.suppressed} skipped because they voted or snoozed, ${message.failed.length} failed or uncertain. ${message.controlsFailed.length} delivered DMs had reaction setup problems. Failed attempts are not retried automatically.${(message.failed.length || message.controlsFailed.length) ? " Check the server logs for recipient IDs." : ""}`, allowedMentions: { parse: [] } });
         } catch (error) {
             console.error('Manual reminder command failed:', error);
             await interaction.editReply('The command could not finish. Check server logs and DM delivery results before retrying and run /reminder-check to verify configuration.');

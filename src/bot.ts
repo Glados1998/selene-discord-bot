@@ -1,10 +1,20 @@
 /** Builds the Discord client. Every registered command passes the same authorization gate. */
-import { Client, Events, GatewayIntentBits } from 'discord.js';
+import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
+import { handleReminderReaction } from './reminders/reactions.js';
 import { commands } from './commands/index.js';
 import { authorizeCommand, type CommandAccessConfig } from './auth/commands.js';
 
 export function createBot(access: CommandAccessConfig): Client {
-    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
+    const client = new Client({
+        intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers, GatewayIntentBits.DirectMessageReactions],
+        partials: [Partials.Channel, Partials.Message, Partials.Reaction, Partials.User],
+    });
+
+    client.on(Events.MessageReactionAdd, (reaction, user) => {
+        void handleReminderReaction(reaction, user, access.guildId).catch(error => {
+            console.error('Reminder reaction could not be processed or acknowledged:', error instanceof Error ? error.message : 'Unknown error');
+        });
+    });
 
     client.once(Events.ClientReady, readyClient => {
         console.log(`Logged in as ${readyClient.user.tag}`);
