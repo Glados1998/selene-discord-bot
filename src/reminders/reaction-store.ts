@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { randomUUID } from 'node:crypto';
 
 export type ReminderChoice = 'voted' | 'snoozed';
+export interface ActiveChoice { choice: ReminderChoice; messageId: string | null }
 export interface ReminderMessage {
     guildId: string;
     userId: string;
@@ -70,11 +71,30 @@ export class ReactionStore {
         return safeKey(`${guildId}-${userId}-${opens}-${choice}`);
     }
 
-    async choice(guildId: string, userId: string, opens: number): Promise<ReminderChoice | undefined> {
+    private selectionKey(guildId: string, userId: string, opens: number): string {
+        return safeKey(`${guildId}-${userId}-${opens}`);
+    }
+
+    async activeChoice(guildId: string, userId: string, opens: number): Promise<ActiveChoice | undefined> {
+        try {
+            const value: unknown = JSON.parse(await readFile(join(this.directory, 'selections', `${this.selectionKey(guildId, userId, opens)}.json`), 'utf8'));
+            // A cleared selection also supersedes legacy flags after a restart.
+            if (value === null) return undefined;
+            const selection = value as ActiveChoice | undefined;
+            if (!selection || !['voted', 'snoozed'].includes(selection.choice) ||
+                (selection.messageId !== null && typeof selection.messageId !== 'string')) {
+                throw new Error('Invalid stored reminder selection.');
+            }
+            return selection;
+        } catch (error) {
+            if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
+        }
+        // Preserve existing choices from the previous version. If both flags exist,
+        // the previous voted-first behavior remains until the user clears it.
         for (const choice of ['voted', 'snoozed'] as const) {
             try {
                 await readFile(join(this.directory, 'choices', `${this.choiceKey(guildId, userId, opens, choice)}.json`));
-                return choice;
+                return { choice, messageId: null };
             } catch (error) {
                 if ((error as NodeJS.ErrnoException).code !== 'ENOENT') throw error;
             }
@@ -82,8 +102,17 @@ export class ReactionStore {
         return undefined;
     }
 
-    async saveChoice(guildId: string, userId: string, opens: number, choice: ReminderChoice): Promise<void> {
-        await this.writeRecord('choices', this.choiceKey(guildId, userId, opens, choice), { savedAt: new Date().toISOString() });
+    async choice(guildId: string, userId: string, opens: number): Promise<ReminderChoice | undefined> {
+        return (await this.activeChoice(guildId, userId, opens))?.choice;
+    }
+
+    // Call mutations under withRecipient, shared with delivery and reaction processing.
+    async saveChoice(guildId: string, userId: string, opens: number, choice: ReminderChoice, messageId: string | null = null): Promise<void> {
+        await this.writeRecord('selections', this.selectionKey(guildId, userId, opens), { choice, messageId });
+    }
+
+    async clearChoice(guildId: string, userId: string, opens: number): Promise<void> {
+        await this.writeRecord('selections', this.selectionKey(guildId, userId, opens), null);
     }
 }
 

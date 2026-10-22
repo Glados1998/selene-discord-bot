@@ -1,6 +1,6 @@
 /** Builds the Discord client. Every registered command passes the same authorization gate. */
 import { Client, Events, GatewayIntentBits, Partials } from 'discord.js';
-import { handleReminderReaction } from './reminders/reactions.js';
+import { handleReminderReaction, handleReminderReactionRemoval } from './reminders/reactions.js';
 import { commands } from './commands/index.js';
 import { authorizeCommand, type CommandAccessConfig } from './auth/commands.js';
 
@@ -13,6 +13,12 @@ export function createBot(access: CommandAccessConfig): Client {
     client.on(Events.MessageReactionAdd, (reaction, user) => {
         void handleReminderReaction(reaction, user, access.guildId).catch(error => {
             console.error('Reminder reaction could not be processed or acknowledged:', error instanceof Error ? error.message : 'Unknown error');
+        });
+    });
+
+    client.on(Events.MessageReactionRemove, (reaction, user) => {
+        void handleReminderReactionRemoval(reaction, user, access.guildId).catch(error => {
+            console.error('Reminder reaction removal could not be processed or acknowledged:', error instanceof Error ? error.message : 'Unknown error');
         });
     });
 

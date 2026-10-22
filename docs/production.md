@@ -74,9 +74,11 @@ Re-register commands after this change to expose the `test` option. Enable Serve
 
 Preserve the entire `data/` volume, including `reminder-reactions/`. Restart with this version to enable DM reaction events; no additional privileged intent or slash-command registration is needed for reactions.
 
-1. Send a fresh `/reminder-send test:true` and click ✅ and 💤. Confirm the two distinct test acknowledgements and that neither changes real preferences.
+1. Send a fresh `/reminder-send test:true` and click ✅, then 💤. Confirm the second choice returns an error. Remove ✅, then remove/re-add 💤 if it is still selected. Confirm snooze is accepted. Repeat the correction in the opposite direction; neither test changes real preferences.
 2. During an active voting window in the test server, send a real opening reminder. Have one recipient choose ✅ and another choose 💤; confirm each receives the matching acknowledgement.
 3. Restart the test bot. Run `/reminder-send kind:final` within the same window; both recipients must count as suppressed while an eligible recipient without a choice still receives the final DM.
 4. Verify a reaction added after restart to a tracked DM is processed. After the cycle closes, its reactions must explain that the cycle has expired and must not suppress the next cycle.
 
-Reactions added while the bot is offline are not reconciled from message history. Users should wait for acknowledgement and remove/re-add a reaction if necessary after the bot reconnects. These live checks remain separate from the automated tests.
+Reactions added or removed while the bot is offline are not reconciled from message history. Users should wait for acknowledgement and remove/re-add a reaction if necessary after the bot reconnects. These live checks remain separate from the automated tests.
+
+After saving a real choice, verify that removing a rejected reaction leaves it unchanged. Removing the accepted reaction must confirm it was cleared and make the recipient eligible for an unsent final reminder. Repeat after restarting; stale-cycle removals must not change the current cycle.

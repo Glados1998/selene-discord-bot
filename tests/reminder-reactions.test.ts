@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
 import { test, type TestContext } from 'node:test';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdtemp, rm, mkdir, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { GatewayIntentBits, Partials, type MessageReaction, type User } from 'discord.js';
 import { createBot } from '../src/bot.js';
 import { ReactionStore, type ReminderMessage } from '../src/reminders/reaction-store.js';
-import { handleReminderReaction } from '../src/reminders/reactions.js';
+import { handleReminderReaction, handleReminderReactionRemoval } from '../src/reminders/reactions.js';
 import { sendReminder } from '../src/reminders/send.js';
 import { config, fixture } from './reminder-fixture.js';
 
@@ -34,6 +34,9 @@ function event(emoji = '✅') {
 }
 async function react(value: ReturnType<typeof event>, store: ReactionStore, now = opens) {
     await handleReminderReaction(value.reaction as unknown as MessageReaction, value.user as unknown as User, config.guildId, store, now);
+}
+async function remove(value: ReturnType<typeof event>, store: ReactionStore, now = opens) {
+    await handleReminderReactionRemoval(value.reaction as unknown as MessageReaction, value.user as unknown as User, config.guildId, store, now);
 }
 function claims() {
     const keys = new Set<string>();
@@ -105,6 +108,8 @@ test('test reactions work outside voting hours without suppressing real reminder
         const e = event(emoji); await react(e, store, new Date('2026-10-16T12:00:00Z'));
         assert.match(e.replies[0]!.content, /Test confirmed/);
         assert.match(e.replies[0]!.content, /real reminder settings are unchanged/);
+        await remove(e, store, new Date('2026-10-16T12:00:00Z'));
+        assert.match(e.replies.at(-1)!.content, /cleared/);
         assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), undefined);
     }
     const e = event(); await react(e, store, closes);
@@ -159,4 +164,116 @@ test('client accepts uncached DM reactions after a restart', async () => {
             assert.ok(client.options.partials.includes(partial));
         }
     } finally { await client.destroy(); }
+});
+
+
+for (const [firstEmoji, firstChoice, secondEmoji, secondChoice] of [
+    ['✅', 'voted', '💤', 'snoozed'], ['💤', 'snoozed', '✅', 'voted'],
+] as const) {
+    test(`${firstChoice} must be removed before switching to ${secondChoice}, including after restart`, async context => {
+        const { store, directory } = await setup(context);
+        await store.bind('message-1', binding);
+        const first = event(firstEmoji); const second = event(secondEmoji);
+        await react(first, store);
+        const restarted = new ReactionStore(directory);
+        await react(second, restarted);
+        assert.match(second.replies[0]!.content, /can’t choose both/);
+        assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), firstChoice);
+        // A rejected reaction never becomes active, even when removed later.
+        await remove(second, restarted);
+        assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), firstChoice);
+        await remove(first, restarted);
+        assert.match(first.replies.at(-1)!.content, /cleared for this cycle/);
+        assert.equal(await new ReactionStore(directory).choice(config.guildId, 'leader', opens.getTime()), undefined);
+        await react(second, restarted);
+        assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), secondChoice);
+        await remove(first, restarted);
+        assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), secondChoice);
+    });
+
+    test(`preview enforces ${firstChoice} to ${secondChoice} correction without changing live state`, async context => {
+        const { store } = await setup(context);
+        await store.bind('message-1', { ...binding, test: true });
+        const first = event(firstEmoji); const second = event(secondEmoji);
+        await react(first, store);
+        await react(second, store);
+        assert.match(second.replies[0]!.content, /Test: You can’t choose both/);
+        await remove(first, store);
+        await react(second, store);
+        assert.match(second.replies.at(-1)!.content, /Test confirmed/);
+        assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), undefined);
+    });
+}
+
+test('rapid remove then add is processed in event order', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    const voted = event(); const snoozed = event('💤');
+    await react(voted, store);
+    await Promise.all([remove(voted, store), react(snoozed, store)]);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'snoozed');
+    assert.match(snoozed.replies[0]!.content, /Reminders snoozed/);
+});
+
+test('simultaneous opposite choices accept one and reject the other', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    const voted = event(); const snoozed = event('💤');
+    await Promise.all([react(voted, store), react(snoozed, store)]);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
+    assert.match(snoozed.replies[0]!.content, /can’t choose both/);
+});
+
+test('removing a duplicate on a different message does not clear the original selection', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    await store.bind('message-2', binding);
+    const original = event(); const duplicate = event(); duplicate.reaction.message.id = 'message-2';
+    await react(original, store);
+    await react(duplicate, store);
+    assert.match(duplicate.replies[0]!.content, /already saved/);
+    await remove(duplicate, store);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
+    await remove(original, store);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), undefined);
+});
+
+test('clearing a choice re-enables an unsent final reminder and failures preserve the choice', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    const e = event(); await react(e, store);
+    const failure = context.mock.method(store, 'clearChoice', async () => { throw new Error('disk failure'); });
+    await remove(e, store);
+    assert.match(e.replies.at(-1)!.content, /couldn’t clear/);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
+    failure.mock.restore();
+    await remove(e, store);
+    const f = fixture(); f.members.delete('blocked');
+    assert.equal((await sendReminder(f.client, config, 'final', monday, claims(), store)).sent, 1);
+});
+
+test('expired or unauthorized removal cannot clear the active choice', async context => {
+    const { store } = await setup(context);
+    await store.bind('message-1', binding);
+    const e = event(); await react(e, store);
+    await remove(e, store, closes);
+    assert.match(e.replies.at(-1)!.content, /outside its voting cycle/);
+    const other = event(); other.user.id = 'someone-else';
+    await remove(other, store);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
+});
+
+test('clearing a migrated choice does not reactivate a second legacy flag', async context => {
+    const { store, directory } = await setup(context);
+    await mkdir(join(directory, 'choices'));
+    for (const choice of ['voted', 'snoozed']) {
+        await writeFile(join(directory, 'choices', `${config.guildId}-leader-${opens.getTime()}-${choice}.json`), '{}');
+    }
+    await store.bind('message-1', binding);
+    assert.equal(await store.choice(config.guildId, 'leader', opens.getTime()), 'voted');
+    await remove(event(), store);
+    const restarted = new ReactionStore(directory);
+    assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), undefined);
+    await react(event('💤'), restarted);
+    assert.equal(await restarted.choice(config.guildId, 'leader', opens.getTime()), 'snoozed');
 });
