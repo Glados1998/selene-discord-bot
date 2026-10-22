@@ -1,36 +1,58 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { ChannelType, PermissionsBitField, PermissionFlagsBits, type Client } from 'discord.js';
-import { buildReminderMessage, sendReminder } from '../src/reminders/send.js';
-
-const config = { guildId: '123456789012345678', roleId: '234567890123456789', channelId: '345678901234567890' };
-
-test('delivery sends once to the resolved channel and allows only the configured role mention', async () => {
-    const payloads: unknown[] = [];
-    const message = { url: 'https://discord.com/channels/test' };
-    const channel = {
-        type: ChannelType.GuildText,
-        permissionsFor: () => new PermissionsBitField([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]),
-        send: async (payload: unknown) => { payloads.push(payload); return message; },
-    };
-    const client = { guilds: { fetch: async (id: string) => {
-        assert.equal(id, config.guildId);
-        return {
-            id,
-            roles: { fetch: async (roleId: string) => {
-                assert.equal(roleId, config.roleId);
-                return { id: roleId, mentionable: true };
-            } },
-            channels: { fetch: async (channelId: string) => { assert.equal(channelId, config.channelId); return channel; } },
-            members: { fetchMe: async () => ({}) },
-        };
-    } } } as unknown as Client;
-    assert.equal(await sendReminder(client, config), message);
-    assert.deepEqual(payloads, [buildReminderMessage(config.roleId)]);
-    assert.deepEqual(buildReminderMessage(config.roleId).allowedMentions, {
-        parse: [], roles: [config.roleId], users: [], repliedUser: false,
-    });
-    channel.permissionsFor = () => new PermissionsBitField();
-    await assert.rejects(sendReminder(client, config), /View Channel/);
-    assert.equal(payloads.length, 1);
+import { MessageFlags, type ChatInputCommandInteraction } from 'discord.js';
+import { sendReminder } from '../src/reminders/send.js';
+import { reminderSend } from '../src/commands/reminder-send.js';
+import { config, fixture } from './reminder-fixture.js';
+const now = new Date('2026-10-18T19:00:00Z');
+function store() {
+    const keys = new Set<string>();
+    return { claim: async (key: string) => { if (keys.has(key)) return false; keys.add(key); return true; } };
+}
+test('personal DMs isolate failures and deduplicate manual/scheduled sends across a cycle', async () => {
+    const f = fixture(); const claims = store();
+    assert.deepEqual(await sendReminder(f.client, config, 'manual', now, claims), { sent: 1, skipped: 0, failed: ['blocked'] });
+    assert.deepEqual(await sendReminder(f.client, config, 'voting-open', now, claims), { sent: 0, skipped: 2, failed: [] });
+    assert.equal(f.payloads.length, 2);
+    assert.match(f.payloads[0]!.payload.content, /Hello Duke \\?\*/);
+    assert.deepEqual(f.payloads[0]!.payload.allowedMentions, { parse: [], roles: [], users: [], repliedUser: false });
+    await sendReminder(f.client, config, 'final', new Date('2026-10-19T18:00:00Z'), claims);
+    await sendReminder(f.client, config, 'manual', new Date('2026-10-25T20:00:00Z'), claims);
+    assert.equal(f.payloads.length, 6);
+});
+test('manual sends reject outside the window, including exact closing, before roster or claims', async () => {
+    const f = fixture();
+    for (const date of ['2026-10-18T18:59:59Z', '2026-10-20T04:00:00Z']) {
+        await assert.rejects(sendReminder(f.client, config, 'manual', new Date(date), store()), /outside/);
+    }
+    assert.equal(f.payloads.length, 0);
+    await sendReminder(f.client, config, 'preparation', new Date('2026-10-16T18:00:00Z'), store());
+    assert.equal(f.payloads.length, 2);
+});
+test('storage failure prevents sending and concurrent calls claim each recipient once', async () => {
+    const f = fixture();
+    await assert.rejects(sendReminder(f.client, config, 'manual', now, { claim: async () => { throw new Error('disk'); } }), /disk/);
+    assert.equal(f.payloads.length, 0);
+    const claims = store();
+    await Promise.all([sendReminder(f.client, config, 'manual', now, claims), sendReminder(f.client, config, 'voting-open', now, claims)]);
+    assert.equal(f.payloads.length, 2);
+});
+test('test option sends only to invoking admin without resolving recipients', async () => {
+    const original = { ...process.env };
+    Object.assign(process.env, { GUILD_ID: config.guildId, GUILD_LEADER_ROLE_ID: config.roleId });
+    const payloads: any[] = []; const replies: any[] = [];
+    try {
+        await reminderSend.execute({
+            guildId: config.guildId, options: { getBoolean: () => true },
+            user: { displayName: 'Admin', send: async (payload: unknown) => { payloads.push(payload); } },
+            deferReply: async (payload: unknown) => assert.deepEqual(payload, { flags: MessageFlags.Ephemeral }),
+            editReply: async (payload: unknown) => { replies.push(payload); },
+        } as unknown as ChatInputCommandInteraction);
+        assert.equal(payloads.length, 1); assert.match(payloads[0].content, /TEST PREVIEW/);
+        assert.match(replies[0], /only to you/);
+    } finally {
+        for (const key of ['GUILD_ID', 'GUILD_LEADER_ROLE_ID']) {
+            if (original[key] === undefined) delete process.env[key]; else process.env[key] = original[key];
+        }
+    }
 });

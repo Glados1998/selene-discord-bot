@@ -15,7 +15,7 @@ export function createScheduler(options: SchedulerOptions) {
     let running: Promise<void> | undefined;
     let stopped = false;
     let timer: ReturnType<typeof setInterval> | undefined;
-    const report = options.onError ?? (error => console.error('Scheduled reminder failed; check the channel before retrying manually:', error));
+    const report = options.onError ?? (error => console.error('Scheduled reminder failed; check DM delivery logs before retrying manually:', error));
 
     async function run(): Promise<void> {
         if (!options.isReady()) return;
@@ -24,7 +24,7 @@ export function createScheduler(options: SchedulerOptions) {
             try {
                 if (await options.claim(`${options.guildId}-${occurrence.key}`)) {
                     await options.send(occurrence.kind);
-                    console.log(`Scheduled reminder sent: ${occurrence.key}`);
+                    console.log(`Scheduled reminder processed: ${occurrence.key}`);
                 }
             } catch (error) {
                 report(error);

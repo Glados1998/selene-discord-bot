@@ -5,12 +5,12 @@ Production will run on Railway. The supplied Selene - Atreides IDs are saved in 
 ## Discord installation and command access
 
 1. In the Discord Developer Portal, select the application matching `CLIENT_ID`. Use its Guild Install link with `bot` and `applications.commands` scopes to install into Selene - Atreides.
-2. In the production environment, set `GUILD_ID`, `ADMIN_ROLE_ID`, `GUILD_LEADER_ROLE_ID`, and `REMINDER_CHANNEL_ID` using IDs from Selene - Atreides. The same application/token can be used if this is the intended production bot. Keep the token in the host's secret/environment configuration, not in Git or chat.
-3. Give the bot View Channel and Send Messages in the reminder channel, plus Mention Everyone there if the target role is not mentionable. The bot itself does not require Administrator permission.
+2. In the production environment, set `GUILD_ID`, `ADMIN_ROLE_ID`, and `GUILD_LEADER_ROLE_ID` using IDs from Selene - Atreides. The same application/token can be used if this is the intended production bot. Keep the token in the host's secret/environment configuration, not in Git or chat.
+3. Enable Server Members Intent in Developer Portal → Bot so the bot can fetch all guild leaders. DM delivery does not require channel sending or role mention permissions. The bot itself does not require Administrator permission.
 4. Register the commands using the production environment (see commands below).
 5. In Discord's Server Settings → Integrations → this application, explicitly allow the specific admin role to use the bot's commands. Check for per-command overrides. Commands are disabled for ordinary members by default; Discord administrators can see/use commands at the platform level, but the bot independently denies anyone without `ADMIN_ROLE_ID`, including administrators and the server owner.
 6. Restart the bot after setting `ADMIN_ROLE_ID`. All commands are restricted to the configured server. `/status`, `/reminder-check`, and `/reminder-send` also require the exact admin role; `/schedule` and `/info` are public. A missing role ID prevents startup.
-7. Verify `/status` and `/reminder-check` with an admin-role member. Verify members without the admin role can use `/schedule` and `/info` but cannot execute administrator commands. `/reminder-send` triggers an actual role notification, so use it only when ready for that notification.
+7. Verify `/status` and `/reminder-check` with an admin-role member. Verify members without the admin role can use `/schedule` and `/info` but cannot execute administrator commands. First run `/reminder-send test:true` for a labelled DM only to yourself. `/reminder-send` sends real leader DMs during the voting window.
 
 Discord permission behavior: https://docs.discord.com/developers/interactions/application-commands#permissions
 
@@ -58,9 +58,13 @@ For a host without containers, use Node.js 22.18 or later, run `npm ci`, `npm te
 ## Verification and updates
 
 - Confirm the startup log shows the bot identity and Friday 20:00, Sunday 21:00, Monday 20:00, Europe/Amsterdam (or the configured preparation/final reminder times).
-- Check the correct guild leader role and reminder channel with `/reminder-check`.
+- Check the correct guild leader role and human recipient count with `/reminder-check`.
 - Confirm the first automatic reminder at its scheduled time.
 - Retain the persistent volume when updating; do not run `docker compose down -v` unless intentionally deleting delivery history.
 - For updates, build the image, register commands if definitions changed, then run `docker compose up -d`. Preserve the environment and volume.
 
-Delivery claims prevent repeat attempts, but a failed/uncertain delivery is not retried automatically. Review logs and the channel before sending a manual fallback. Hosts and storage do not automatically migrate from the development machine.
+Delivery claims prevent repeat attempts, but a failed/uncertain delivery is not retried automatically. Review DM delivery logs before a manual fallback; recipients already attempted for the opening reminder are skipped. Hosts and storage do not automatically migrate from the development machine.
+
+## DM rollout verification
+
+Re-register commands after this change to expose the `test` option. Enable Server Members Intent before restarting. Keep the existing persistent delivery directory. Confirm `/reminder-check` counts the expected human leaders, then run `/reminder-send test:true` and inspect your DM. During the voting window, verify real delivery and that a repeat invocation reports skipped recipients. Check that no channel ping appears and blocked DMs are reported without stopping other deliveries. Local tests do not verify these live Discord behaviors.

@@ -10,7 +10,7 @@ The bot provides public `/schedule` and `/info` commands, an administrator-only 
 - A Discord application with a bot installed in your server, authorized with the `bot` and `applications.commands` scopes.
 - Access to a server channel where you can invoke the bot's commands.
 
-The bot currently requests only the Guilds intent; no privileged intents are needed for `/status`.
+Enable **Server Members Intent** in Discord Developer Portal → Bot before starting this version. The bot requests Guilds and GuildMembers to fetch the full leader roster.
 
 ## Setup
 
@@ -70,14 +70,13 @@ Add these values to your existing `.env` (leave the token and existing IDs intac
 
 ```dotenv
 GUILD_LEADER_ROLE_ID=your_role_id
-REMINDER_CHANNEL_ID=your_channel_id
 ```
 
-With Discord Developer Mode enabled, copy the ID of the **guild leader** role and the ID of the text channel intended for reminders. IDs keep the configuration stable when names change. `GUILD_ID` must identify Selene - Atreides.
+With Discord Developer Mode enabled, copy the ID of the **guild leader** role. The old `REMINDER_CHANNEL_ID` is no longer used. IDs keep the configuration stable when names change. `GUILD_ID` must identify Selene - Atreides.
 
 Run `npm run deploy` to register the new command, then restart development mode or run `npm run build` and `npm start`. Run `/reminder-check` as a member with the configured **admin role** in the configured server.
 
-The check validates that the role exists and is not @everyone, the channel is a server text channel, and the bot can view and send messages there. The role must be mentionable, or the bot must have Mention Everyone in that channel. Replies are private and disable mentions: checking setup does not notify guild leaders or send a reminder.
+The check validates the role and fetches all members to count human leaders. It does not send DMs or prove their privacy settings allow delivery. No channel permissions or role mention permissions are required for DM delivery.
 
 With scheduling disabled, reminder configuration is validated when this command runs, so `/status` remains available while setup is incomplete. Enabling scheduling makes reminder configuration required at startup. The reusable target resolver lives in `src/reminders/target.ts` and is also used by manual and scheduled delivery.
 
@@ -85,9 +84,11 @@ With scheduling disabled, reminder configuration is validated when this command 
 
 Register the updated command list with `npm run deploy`, then restart the bot (run `npm run build` first if using `npm start`). As a member with the configured **admin role**, run `/reminder-send` in the configured server.
 
-This sends an actual voting reminder to `REMINDER_CHANNEL_ID` and mentions only `GUILD_LEADER_ROLE_ID`. The command replies privately with a link to the message. Every invocation sends a reminder; concurrent requests within one bot process are rejected while a send is in progress. There is no persistent cooldown or automatic retry. If delivery cannot be confirmed, inspect the channel before retrying to avoid duplicate notifications.
+`/reminder-send test:true` sends a clearly labelled opening-message preview only to the invoking admin, even outside voting hours. It does not fetch the leader roster or record a delivery claim. Use this first to check the wording and your DM privacy settings.
 
-The manual message asks members to check this cycle’s Landsraad outcome and vote according to the guild discussion if voting is available to us. It does not track whether anyone has voted. Completion tracking is not implemented; scheduled reminders are sent once per weekly slot.
+`/reminder-send` sends a personal DM to every human member with `GUILD_LEADER_ROLE_ID`, using their server display name. It works only during the scheduled Sunday 21:00–Tuesday 06:00 voting window. It sends no channel messages or role pings. The private response reports sent, already-attempted, and failed/uncertain counts; logs identify failed recipients.
+
+Manual and automatic opening reminders share a persistent per-recipient, per-cycle claim. Repeated commands skip previous attempts; preparation and final reminders have separate claims. Blocked DMs do not stop delivery to other leaders. Failed or uncertain attempts remain claimed and are not retried, because Discord might have accepted the message. The bot does not track votes or query the game outcome.
 
 `src/reminders/send.ts` owns message construction and delivery, shared by manual and scheduled reminders.
 
@@ -117,7 +118,7 @@ The example environment file leaves automatic sending disabled for new installat
 
 The bot must remain running on a machine with network access. Scheduling runs inside this bot, checks every 30 seconds, and waits for a ready Discord connection. A restart can catch up for up to one hour after the scheduled time; older reminders are skipped. This does not create an operating-system service or keep a sleeping computer awake.
 
-Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Check the channel before using `/reminder-send` as a manual fallback. Removing claims can cause duplicate notifications.
+Delivery claims are stored in `data/reminder-deliveries/`, excluded from Git. Keep this directory across restarts and deployments, and use one running bot instance. A claim is written **before** contacting Discord. This prevents repeat attempts after restarts, including when Discord's response is lost, but a crash or delivery failure after the claim may leave that reminder unsent. Failed attempts are logged and are not automatically retried. Review DM delivery logs before using `/reminder-send`; previous recipient attempts remain skipped. Removing claims can cause duplicate notifications.
 
 The modules are deliberately separate: `schedule.ts` determines what is due, `scheduler.ts` coordinates polling and delivery, and `delivery-store.ts` persists claims. Local tests cover summer/winter time, daylight saving transitions, missed windows, duplicate claims, restarts, offline clients, and storage/delivery failures.
 

@@ -4,7 +4,7 @@ import { commands } from './commands/index.js';
 import { authorizeCommand, type CommandAccessConfig } from './auth/commands.js';
 
 export function createBot(access: CommandAccessConfig): Client {
-    const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+    const client = new Client({ intents: [GatewayIntentBits.Guilds, GatewayIntentBits.GuildMembers] });
 
     client.once(Events.ClientReady, readyClient => {
         console.log(`Logged in as ${readyClient.user.tag}`);

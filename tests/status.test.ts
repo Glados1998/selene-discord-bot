@@ -3,7 +3,7 @@ import { mkdtemp, rm, readdir } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
-import { ChannelType, MessageFlags, PermissionsBitField, PermissionFlagsBits, type ChatInputCommandInteraction } from 'discord.js';
+import { Collection, ChannelType, MessageFlags, PermissionsBitField, PermissionFlagsBits, type ChatInputCommandInteraction } from 'discord.js';
 import { status } from '../src/commands/status.js';
 
 const settings = { REMINDERS_ENABLED: 'false', GUILD_ID: '123456789012345678', GUILD_LEADER_ROLE_ID: '234567890123456789', REMINDER_CHANNEL_ID: '345678901234567890' };
@@ -22,7 +22,7 @@ test('status is private, checks prerequisites, and leaves no delivery claims', a
                 id: settings.GUILD_ID,
                 roles: { fetch: async () => ({ id: settings.GUILD_LEADER_ROLE_ID, mentionable: true }) },
                 channels: { fetch: async () => ({ type: ChannelType.GuildText, permissionsFor: () => new PermissionsBitField([PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages]) }) },
-                members: { fetchMe: async () => ({}) },
+                members: { fetch: async () => new Collection([['leader', { user: { bot: false }, roles: { cache: new Map([[settings.GUILD_LEADER_ROLE_ID, {}]]) } }]]) },
             }) },
         };
         const interaction = {
@@ -34,7 +34,7 @@ test('status is private, checks prerequisites, and leaves no delivery claims', a
         assert.match(replies[0]!.content, /Discord connection: ready/);
         assert.match(replies[0]!.content, /Gateway latency: 42 ms/);
         assert.match(replies[0]!.content, /Automatic reminders: disabled/);
-        assert.match(replies[0]!.content, /permissions: ready/);
+        assert.match(replies[0]!.content, /DM recipients: ready/);
         assert.match(replies[0]!.content, /storage: writable/);
         assert.deepEqual(replies[0]!.allowedMentions, { parse: [] });
         assert.deepEqual(await readdir('data/reminder-deliveries'), []);

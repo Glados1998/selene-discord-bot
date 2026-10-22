@@ -27,7 +27,7 @@ export const status = {
         }
         try {
             await resolveReminderTarget(interaction.client, loadReminderConfig());
-            lines.push('Reminder role, channel, and permissions: ready');
+            lines.push('Reminder role and DM recipients: ready');
         } catch {
             // Do not expose raw API errors or configuration values in Discord.
             lines.push('Reminder target: check failed; run /reminder-check for details');

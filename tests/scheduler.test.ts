@@ -113,10 +113,10 @@ test('scheduler never sends when durable storage fails', async () => {
     await scheduler.stop();
 });
 
-test('scheduled messages describe each phase and only allow the intended role mention', () => {
+test('scheduled messages describe each phase and disable all mentions', () => {
     for (const kind of ['preparation', 'voting-open', 'final'] as const) {
         const message = buildReminderMessage(env.GUILD_LEADER_ROLE_ID, kind);
-        assert.deepEqual(message.allowedMentions.roles, [env.GUILD_LEADER_ROLE_ID]);
+        assert.deepEqual(message.allowedMentions.roles, []);
         assert.deepEqual(message.allowedMentions.parse, []);
         assert.match(message.content, /<t:\d+:F> \(<t:\d+:R>\)/);
     }
